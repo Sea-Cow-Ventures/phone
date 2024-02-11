@@ -9,14 +9,36 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"text/template"
 	"time"
 
+	"github.com/go-playground/validator"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	tValidatorClient "github.com/twilio/twilio-go/client"
 	"github.com/twilio/twilio-go/twiml"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
+
+type Template struct {
+	templates *template.Template
+}
+
+func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
+	return t.templates.ExecuteTemplate(w, name, data)
+}
+
+type CustomValidator struct {
+	validator *validator.Validate
+}
+
+func (cv *CustomValidator) Validate(i interface{}) error {
+	if err := cv.validator.Struct(i); err != nil {
+		return err
+	}
+	return nil
+}
 
 func initWebserver() {
 	e.HideBanner = true
@@ -24,8 +46,22 @@ func initWebserver() {
 
 	e.Use(recoverMiddleware())
 	e.Use(loggerMiddleware())
+	e.Use(middleware.CORS())
+	e.Use(middleware.RequestID())
+	e.Use(middleware.Gzip())
+	e.Use(middleware.Secure())
+	e.Use(middleware.BodyLimit("2M"))
+	e.Validator = &CustomValidator{validator: validator.New()}
+
+	t := &Template{
+		templates: template.Must(template.ParseGlob(workingDir + "/views/*.html")),
+	}
+	e.Renderer = t
 
 	// Define routes
+	e.GET("/", loginHandler)
+	e.GET("/home", homeHandler)
+	e.POST("/signin", signinHandler)
 	e.POST("/sms", smsHandler)
 	e.POST("/voice", voiceHandler)
 	e.POST("/welcome", welcomeHandler)
@@ -79,10 +115,12 @@ func loggerMiddleware() echo.MiddlewareFunc {
 				body, err := io.ReadAll(c.Request().Body)
 				if err != nil {
 					logger.Error("Failed to read request body", zap.Error(err))
+					return err
 				}
 				c.Request().Body = io.NopCloser(bytes.NewReader(body))
 
 				fields = append(fields, zap.String("request_body", string(body)))
+				fields = append(fields, zap.Error(err))
 
 				logger.With(zap.Error(err)).Error("Webserver error", fields...)
 				//emailErr := email.SendErrorEmail(
@@ -98,9 +136,10 @@ func loggerMiddleware() echo.MiddlewareFunc {
 				//	logger.Error("Sending error email", zap.Error(emailErr))
 				//}
 			case n >= 400:
-				body, err := ioutil.ReadAll(c.Request().Body)
+				body, err := io.ReadAll(c.Request().Body)
 				if err != nil {
 					logger.Error("Failed to read request body", zap.Error(err))
+					return err
 				}
 
 				fields = append(fields, zap.String("request_body", string(body)))
@@ -123,7 +162,7 @@ func recoverMiddleware() echo.MiddlewareFunc {
 			if r := recover(); r != nil {
 				err, ok := r.(error)
 				if !ok {
-					logger.Error("Webserver error", zap.Any("error", err), zap.Stack("stack"))
+					logger.Error("Webserver error", zap.Error(err), zap.Stack("stack"))
 				} else {
 					logger.Error("Webserver error", zap.Error(err), zap.Stack("stack"))
 					//emailErr := email.SendErrorEmail(
@@ -411,5 +450,27 @@ func connectAgentHandler(c echo.Context) error {
 		c.String(http.StatusOK, twimlResult)
 	}
 
+	return nil
+}
+
+func homeHandler(c echo.Context) error {
+	return c.Render(http.StatusOK, "home.html", nil)
+}
+
+func loginHandler(c echo.Context) error {
+	return c.Render(http.StatusOK, "login.html", nil)
+}
+
+func signinHandler(c echo.Context) error {
+	user := new(User)
+	if err := c.Bind(user); err != nil {
+		return c.String(http.StatusBadRequest, "Invalid request data")
+	}
+
+	if err := c.Validate(user); err != nil {
+		return err
+	}
+
+	c.String(http.StatusOK, "success")
 	return nil
 }

@@ -1,12 +1,25 @@
 # github.com/beevik/etree v1.2.0
 ## explicit; go 1.13
 github.com/beevik/etree
+# github.com/go-playground/locales v0.14.1
+## explicit; go 1.17
+github.com/go-playground/locales
+github.com/go-playground/locales/currency
+# github.com/go-playground/universal-translator v0.18.1
+## explicit; go 1.18
+github.com/go-playground/universal-translator
+# github.com/go-playground/validator v9.31.0+incompatible
+## explicit
+github.com/go-playground/validator
 # github.com/go-sql-driver/mysql v1.7.1
 ## explicit; go 1.13
 github.com/go-sql-driver/mysql
 # github.com/go-stack/stack v1.8.1
 ## explicit; go 1.17
 github.com/go-stack/stack
+# github.com/golang-jwt/jwt v3.2.2+incompatible
+## explicit
+github.com/golang-jwt/jwt
 # github.com/golang/mock v1.6.0
 ## explicit; go 1.11
 github.com/golang/mock/gomock
@@ -24,17 +37,23 @@ github.com/jmoiron/sqlx/reflectx
 # github.com/jpillora/backoff v1.0.0
 ## explicit; go 1.13
 github.com/jpillora/backoff
-# github.com/labstack/echo/v4 v4.11.1
-## explicit; go 1.17
+# github.com/labstack/echo/v4 v4.11.4
+## explicit; go 1.18
 github.com/labstack/echo/v4
-# github.com/labstack/gommon v0.4.0
-## explicit; go 1.12
+github.com/labstack/echo/v4/middleware
+# github.com/labstack/gommon v0.4.2
+## explicit; go 1.18
+github.com/labstack/gommon/bytes
 github.com/labstack/gommon/color
 github.com/labstack/gommon/log
+# github.com/leodido/go-urn v1.4.0
+## explicit; go 1.18
+github.com/leodido/go-urn
+github.com/leodido/go-urn/scim/schema
 # github.com/mattn/go-colorable v0.1.13
 ## explicit; go 1.15
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.19
+# github.com/mattn/go-isatty v0.0.20
 ## explicit; go 1.15
 github.com/mattn/go-isatty
 # github.com/pkg/errors v0.9.1
@@ -120,12 +139,12 @@ golang.ngrok.com/ngrok/internal/tunnel/client
 golang.ngrok.com/ngrok/internal/tunnel/netx
 golang.ngrok.com/ngrok/internal/tunnel/proto
 golang.ngrok.com/ngrok/log
-# golang.org/x/crypto v0.12.0
-## explicit; go 1.17
+# golang.org/x/crypto v0.17.0
+## explicit; go 1.18
 golang.org/x/crypto/acme
 golang.org/x/crypto/acme/autocert
-# golang.org/x/net v0.14.0
-## explicit; go 1.17
+# golang.org/x/net v0.19.0
+## explicit; go 1.18
 golang.org/x/net/http/httpguts
 golang.org/x/net/http2
 golang.org/x/net/http2/h2c
@@ -133,21 +152,23 @@ golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/socks
 golang.org/x/net/proxy
-# golang.org/x/sys v0.11.0
-## explicit; go 1.17
-golang.org/x/sys/internal/unsafeheader
+# golang.org/x/sys v0.15.0
+## explicit; go 1.18
 golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/term v0.11.0
-## explicit; go 1.17
+# golang.org/x/term v0.15.0
+## explicit; go 1.18
 golang.org/x/term
-# golang.org/x/text v0.12.0
-## explicit; go 1.17
+# golang.org/x/text v0.14.0
+## explicit; go 1.18
 golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
+# golang.org/x/time v0.5.0
+## explicit; go 1.18
+golang.org/x/time/rate
 # google.golang.org/protobuf v1.31.0
 ## explicit; go 1.11
 google.golang.org/protobuf/encoding/prototext

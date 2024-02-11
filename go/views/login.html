@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Sea Cow Phone - Login</title>
+	<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<style>
+	button:disabled {
+		opacity: 0.3;
+		cursor: not-allowed;
+	}
+</style>
+<body class="bg-gray-100">
+
+	<div class="bg-blue-500 text-white p-4">
+		<div class="container mx-auto">
+			<h1 class="text-xl font-semibold">Sea Cow Phone - Login</h1>
+		</div>
+	</div>
+
+	<div class="container mx-auto mt-8 bg-gray-100 h-screen flex items-center justify-center">
+		<div class="max-w-md w-full p-8 bg-white rounded-md shadow-md">
+			<h2 class="text-2xl font-semibold mb-6">Login</h2>
+
+			<form action="/signin" method="POST" class="mb-4">
+				<div class="mb-4">
+					<label for="username" class="block text-sm font-medium text-gray-600">Username</label>
+					<input type="text" id="username" name="username" class="mt-1 p-2 w-full border rounded-md">
+				</div>
+
+				<div class="mb-4">
+					<label for="password" class="block text-sm font-medium text-gray-600">Password</label>
+					<input type="password" id="password" name="password" class="mt-1 p-2 w-full border rounded-md">
+				</div>
+
+				<button type="submit" id="loginBtn" class="w-full py-2 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring focus:border-green-300" disabled>
+					Login
+				</button>
+			</form>
+
+		</div>
+	</div>
+
+	<script>
+		const usernameInput = document.getElementById('username');
+		const passwordInput = document.getElementById('password');
+		const loginBtn = document.getElementById('loginBtn');
+
+		usernameInput.addEventListener('input', validateFields);
+		passwordInput.addEventListener('input', validateFields);
+
+		function validateFields() {
+			const usernameValue = usernameInput.value.trim();
+			const passwordValue = passwordInput.value.trim();
+
+			if (usernameValue !== '' && passwordValue !== '') {
+				loginBtn.removeAttribute('disabled');
+			} else {
+				loginBtn.setAttribute('disabled', 'disabled');
+			}
+		}
+	</script>
+
+</body>
+</html>

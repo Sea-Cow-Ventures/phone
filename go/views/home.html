@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Sea Cow Phone</title>
+	<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100">
+
+	<div class="bg-blue-500 text-white p-4">
+		<div class="container mx-auto">
+			<div class="flex justify-between items-center">
+				<h1 class="text-xl font-semibold">Sea Cow Phone</h1>
+				<div class="flex space-x-4">
+					<a href="#" class="text-white font-bold border border-white px-4 py-1 rounded-md transition duration-300 ease-in-out transform hover:bg-white hover:text-blue-500 hover:scale-105 active:scale-95">Call Logs</a>
+					<a href="#" class="text-white font-bold border border-white px-4 py-1 rounded-md ml-2 transition duration-300 ease-in-out transform hover:bg-white hover:text-blue-500 hover:scale-105 active:scale-95">SMS Logs</a>
+					<div class="flex items-center">
+						<span class="mr-2">Logged in as:</span>
+						<span class="font-semibold">John Doe</span> <!-- Replace with the actual logged-in user's name -->
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<div id="dialerContainer" class="container mx-auto mt-8 bg-gray-100 h-screen flex items-center justify-center">
+		<div class="max-w-md w-full p-8 bg-white rounded-md shadow-md">
+			<h2 class="text-2xl font-semibold mb-6">Phone Dialer</h2>
+	
+			<div class="mb-4">
+				<label for="phoneNumber" class="block text-sm font-medium text-gray-600">Enter Phone Number</label>
+				<input type="text" id="phoneNumber" name="phoneNumber" class="mt-1 p-2 w-full border rounded-md">
+			</div>
+	
+			<style>
+				.dtmf-button {
+					height: 3.5rem;
+				}
+			</style>
+	
+			<script>
+				// polyfill
+				var AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext;
+	
+				function Tone(context, freq1, freq2) {
+					this.context = context;
+					this.status = 0;
+					this.freq1 = freq1;
+					this.freq2 = freq2;
+				}
+	
+				Tone.prototype.setup = function(){
+					this.osc1 = this.context.createOscillator();
+					this.osc2 = this.context.createOscillator();
+					this.osc1.frequency.value = this.freq1;
+					this.osc2.frequency.value = this.freq2;
+	
+					this.gainNode = this.context.createGain();
+					this.gainNode.gain.value = 0.25;
+	
+					this.filter = this.context.createBiquadFilter();
+					this.filter.type = "lowpass";
+					this.filter.frequency.value = 8000;
+	
+					this.osc1.connect(this.gainNode);
+					this.osc2.connect(this.gainNode);
+	
+					this.gainNode.connect(this.filter);
+					this.filter.connect(this.context.destination);
+				}
+	
+				Tone.prototype.start = function(){
+					this.setup();
+					this.osc1.start(0);
+					this.osc2.start(0);
+					this.status = 1;
+				}
+	
+				Tone.prototype.stop = function(){
+					this.osc1.stop(this.context.currentTime);
+					this.osc2.stop(this.context.currentTime);
+					this.status = 0;
+				}
+	
+				var dtmfFrequencies = {
+					"1": {f1: 697, f2: 1209},
+					"2": {f1: 697, f2: 1336},
+					"3": {f1: 697, f2: 1477},
+					"4": {f1: 770, f2: 1209},
+					"5": {f1: 770, f2: 1336},
+					"6": {f1: 770, f2: 1477},
+					"7": {f1: 852, f2: 1209},
+					"8": {f1: 852, f2: 1336},
+					"9": {f1: 852, f2: 1477},
+					"*": {f1: 941, f2: 1209},
+					"0": {f1: 941, f2: 1336},
+					"#": {f1: 941, f2: 1477}
+				}
+	
+				var context = new AudioContext();
+				var dtmf = new Tone(context, 350, 440);
+	
+				document.addEventListener('DOMContentLoaded', function () {
+					const phoneNumberInput = document.getElementById('phoneNumber');
+					const actionButton = document.getElementById('actionButton');
+					let isCallOngoing = false;
+					
+	
+					function addDigit(digit) {
+						digit = digit.replace(/[^0-9*#]/g, '');
+						phoneNumberInput.value += digit;
+						const frequencyPair = dtmfFrequencies[digit];
+						dtmf.freq1 = frequencyPair.f1;
+						dtmf.freq2 = frequencyPair.f2;
+						if (dtmf.status == 0) {
+							dtmf.start();
+						}
+						setTimeout(() => dtmf.stop(), 200); // Stop the tone after 200ms
+					}
+	
+					window.addDigit = addDigit; // Expose addDigit to the global scope
+	
+					document.querySelectorAll('.dtmf-button').forEach(button => {
+						button.addEventListener('mousedown', function(e) {
+							e.preventDefault();
+							const keyPressed = this.innerText;
+							addDigit(keyPressed);
+						});
+					});
+	
+					window.addEventListener('mouseup', function() {
+						if (typeof dtmf !== "undefined" && dtmf.status) {
+							dtmf.stop();
+						}
+					});
+	
+					// Enhanced keyboard navigation and selection
+					let buttonIndex = 0;
+					const buttons = document.querySelectorAll('.dtmf-button');
+					const buttonsPerRow = 3; // Assuming a 3x4 grid
+					document.body.addEventListener('keydown', function(e) {
+						if(['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'Enter', ' '].includes(e.key)) {
+							e.preventDefault(); // Prevent default to handle focus manually
+							switch (e.key) {
+								case 'ArrowRight':
+									buttonIndex = (buttonIndex + 1) % buttons.length;
+									break;
+								case 'ArrowLeft':
+									buttonIndex = (buttonIndex - 1 + buttons.length) % buttons.length;
+									break;
+								case 'ArrowUp':
+									buttonIndex = Math.max(0, buttonIndex - buttonsPerRow);
+									break;
+								case 'ArrowDown':
+									buttonIndex = Math.min(buttons.length - 1, buttonIndex + buttonsPerRow);
+									break;
+							}
+							buttons[buttonIndex].focus();
+	
+							if (e.key === 'Enter' || e.key === ' ') {
+								buttons[buttonIndex].click();
+							}
+						}
+					});
+				}); 
+	
+				window.addEventListener('DOMContentLoaded', (event) => {
+					document.getElementById('actionButton').addEventListener('click', function () {
+						const phoneNumber = document.getElementById('phoneNumber').value.trim();
+						if (phoneNumber !== '') {
+							// Show modal
+							const modal = document.createElement('div');
+							modal.innerHTML = `
+								<div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center" style="width: 100%; height: 100%;">
+									<div class="bg-white p-4 w-96 h-36 m-auto flex flex-col rounded-lg justify-center items-center relative">
+										<div class="flex items-center">
+											<h2 class="text-lg mr-2">Calling ${phoneNumber}</h2>
+											<div id="loading-dots">.<span></span><span></span><span></span></div>
+										</div>
+										<button onclick="this.parentElement.parentElement.remove()" class="text-gray-600 hover:text-gray-800 absolute top-0 right-0 m-2">
+											<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+										</button>
+									</div>
+								</div>
+							`;
+							document.body.appendChild(modal);
+	
+							function animateDots() {
+								const dotsContainer = document.getElementById('loading-dots');
+								let dotCount = 0;
+	
+								setInterval(() => {
+									dotCount = (dotCount + 1) % 4;
+									let dots = '.'.repeat(dotCount) + ' '.repeat(3 - dotCount);
+									dotsContainer.textContent = dots;
+								}, 500);
+							}
+	
+							animateDots();
+	
+						}
+					});
+				});
+			</script>
+	
+			<div class="grid grid-cols-3 gap-4 mb-4">
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
+					<span class="block">1</span>
+				</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
+					<span class="block">2</span>
+					<span class="block text-gray-500 text-opacity-50">ABC</span>
+				</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
+					<span class="block">3</span>
+					<span class="block text-gray-500 text-opacity-50">DEF</span>
+				</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
+					<span class="block">4</span>
+					<span class="block text-gray-500 text-opacity-50">GHI</span>
+				</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
+					<span class="block">5</span>
+					<span class="block text-gray-500 text-opacity-50">JKL</span>
+				</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
+					<span class="block">6</span>
+					<span class="block text-gray-500 text-opacity-50">MNO</span>
+				</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
+					<span class="block">7</span>
+					<span class="block text-gray-500 text-opacity-50">PQRS</span>
+				</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
+					<span class="block">8</span>
+					<span class="block text-gray-500 text-opacity-50">TUV</span>
+				</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
+					<span class="block">9</span>
+					<span class="block text-gray-500 text-opacity-50">WXYZ</span>
+				</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
+					<span class="block">*</span>
+				</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
+					<span class="block">0</span>
+				</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
+					<span class="block">#</span>
+				</button>
+			</div>
+	
+			<button id="actionButton"
+				class="w-full py-2 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring focus:border-green-300">
+				Dial
+			</button>
+		</div>
+
+</body>
+</html>
