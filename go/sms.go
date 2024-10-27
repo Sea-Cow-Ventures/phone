@@ -9,6 +9,11 @@ import (
 	"go.uber.org/zap"
 )
 
+type Message struct {
+	Body     string `db:"body"`
+	SentDate string `db:"sentDate"`
+}
+
 func readAccountMessageHistory() error {
 	logger.Info("Reading account message history")
 
@@ -40,6 +45,14 @@ func readAccountMessageHistory() error {
 		if err != nil {
 			fmt.Println("Error reading messages:", err)
 		}
+
+		phoneNumber, err := t.LookupsV2.FetchPhoneNumber(*msg.To, nil)
+		if err != nil {
+			fmt.Println("Error fetching phone number:", err)
+		}
+
+		logger.Info("Phone number", zap.Any("phoneNumber", phoneNumber))
+
 		if !exists {
 			err = insertMessageLog(msg)
 			insertedMessages++
@@ -118,4 +131,46 @@ func insertMessageLog(msg twilioApi.ApiV2010Message) error {
 	}
 
 	return nil
+}
+
+func readMessagedPhoneNumbers() ([]string, error) {
+	query := `
+		SELECT phoneNumber
+		FROM (
+			SELECT fromNumber AS phoneNumber, updatedDate
+			FROM sms
+			WHERE fromNumber NOT IN ('+19048752208', '+19043158442')
+
+			UNION
+
+			SELECT toNumber AS phoneNumber, updatedDate
+			FROM sms
+			WHERE toNumber NOT IN ('+19048752208', '+19043158442')
+		) AS combined
+		GROUP BY phoneNumber
+		ORDER BY MAX(updatedDate) DESC
+		LIMIT 10 OFFSET 0;
+	`
+
+	var phoneNumbers []string
+	err := db.Select(&phoneNumbers, query)
+	if err != nil {
+		return nil, err
+	}
+
+	return phoneNumbers, nil
+}
+
+func readMessagesByPhoneNumber(phoneNumber string) ([]Message, error) {
+	query := `
+		SELECT body, sentDate FROM sms WHERE fromNumber = ? OR toNumber = ? ORDER BY sentDate DESC
+	`
+
+	var messages []Message
+	err := db.Select(&messages, query, phoneNumber, phoneNumber)
+	if err != nil {
+		return nil, err
+	}
+
+	return messages, nil
 }

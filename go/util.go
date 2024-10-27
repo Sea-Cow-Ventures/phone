@@ -141,6 +141,14 @@ func localTimeNow() (time.Time, error) {
 	return currentTime, nil
 }
 
+func toJSON(v interface{}) (string, error) {
+	a, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	return string(a), nil
+}
+
 func generateRandomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	var result string

@@ -54,15 +54,20 @@ func initWebserver() {
 	e.Use(middleware.BodyLimit("2M"))
 	e.Validator = &CustomValidator{validator: validator.New()}
 
-	t := &Template{
-		templates: template.Must(template.ParseGlob(workingDir + "/views/*.html")),
+	// Register the template renderer with the toJsonm function
+	e.Renderer = &Template{
+		templates: template.Must(template.New("").Funcs(template.FuncMap{
+			"toJSON": toJSON,
+		}).ParseGlob("views/*.html")),
 	}
-	e.Renderer = t
 
 	// Define routes
 	e.Static("/", "views")
 	e.GET("/", loginHandler)
 	e.GET("/home", homeHandler)
+	e.GET("/smsLog", smsLogHandler)
+	e.GET("/readMessagedPhoneNumbers", readMessagedPhoneNumbersHandler)
+	e.POST("/readMessageHistory", readMessagesByPhoneNumberHandler)
 	e.POST("/signin", signinHandler)
 	e.POST("/sms", smsHandler)
 	e.POST("/voice", voiceHandler)
@@ -457,6 +462,60 @@ func connectAgentHandler(c echo.Context) error {
 
 func homeHandler(c echo.Context) error {
 	return c.Render(http.StatusOK, "home.html", nil)
+}
+
+func smsLogHandler(c echo.Context) error {
+	phoneNumbers, err := readMessagedPhoneNumbers()
+	if err != nil {
+		logger.Error("Failed to read messaged phone numbers", zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"error":   "Failed to read messaged phone numbers",
+		})
+	}
+
+	cookie, err := c.Cookie("username")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Bad Cookie",
+		})
+	}
+
+	data := map[string]interface{}{
+		"Conversations": phoneNumbers,
+		"Username":      cookie.Value,
+	}
+
+	return c.Render(http.StatusOK, "smsLog.html", data)
+}
+
+func readMessagedPhoneNumbersHandler(c echo.Context) error {
+	phoneNumbers, err := readMessagedPhoneNumbers()
+	if err != nil {
+		logger.Error("Failed to read messaged phone numbers", zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"error":   "Failed to read messaged phone numbers",
+		})
+	}
+
+	return c.JSON(http.StatusOK, phoneNumbers)
+}
+
+func readMessagesByPhoneNumberHandler(c echo.Context) error {
+	phoneNumber := c.FormValue("phoneNumber")
+	messages, err := readMessagesByPhoneNumber(phoneNumber)
+	logger.Info("Messages", zap.Any("messages", messages))
+	if err != nil {
+		logger.Error("Failed to read messages by phone number", zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"error":   "Failed to read messages by phone number",
+		})
+	}
+
+	return c.JSON(http.StatusOK, messages)
 }
 
 func loginHandler(c echo.Context) error {
