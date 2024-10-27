@@ -19,6 +19,7 @@ import (
 	"github.com/twilio/twilio-go/twiml"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Template struct {
@@ -59,6 +60,7 @@ func initWebserver() {
 	e.Renderer = t
 
 	// Define routes
+	e.Static("/", "views")
 	e.GET("/", loginHandler)
 	e.GET("/home", homeHandler)
 	e.POST("/signin", signinHandler)
@@ -458,19 +460,49 @@ func homeHandler(c echo.Context) error {
 }
 
 func loginHandler(c echo.Context) error {
+	_, found := readLoginCookie(c)
+	if found {
+		return c.Redirect(http.StatusFound, "/home")
+	}
 	return c.Render(http.StatusOK, "login.html", nil)
 }
 
 func signinHandler(c echo.Context) error {
-	user := new(User)
-	if err := c.Bind(user); err != nil {
-		return c.String(http.StatusBadRequest, "Invalid request data")
+	login := new(Login)
+	if err := c.Bind(login); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Invalid Request Data",
+		})
 	}
 
-	if err := c.Validate(user); err != nil {
-		return err
+	if err := c.Validate(login); err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"success": false,
+			"error":   "Unauthorized",
+		})
 	}
 
-	c.String(http.StatusOK, "success")
-	return nil
+	agent, err := readAgentByName(login.Username)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"success": false,
+			"error":   "Unauthorized",
+		})
+	}
+
+	err = bcrypt.CompareHashAndPassword([]byte(agent.HashedPassword), []byte(login.Password))
+
+	if err == nil {
+		writeLoginCookie(c, agent.Username)
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"success":     true,
+			"redirectURL": "/home",
+		})
+	}
+
+	return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+		"success": false,
+		"error":   "Unauthorized",
+	})
 }

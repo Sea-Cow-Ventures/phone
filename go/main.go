@@ -88,6 +88,19 @@ func init() {
 
 	initMysql()
 
+	agents, err := readAgents()
+	if err != nil {
+		logger.Fatal("Failed to read agents", zap.Error(err))
+	}
+
+	if len(agents) < 1 {
+		admin, err := createDefaultAdmin()
+		if err != nil {
+			logger.Fatal("Failed to create default admin", zap.Error(err))
+		}
+		logger.Info("Created default admin", zap.Any("details", admin))
+	}
+
 	t = twilio.NewRestClientWithParams(twilio.ClientParams{
 		Username: cnf.TwilioUser,
 		Password: cnf.TwilioPass,

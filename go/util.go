@@ -1,10 +1,14 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math"
+	"math/big"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -12,8 +16,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
@@ -133,4 +139,39 @@ func localTimeNow() (time.Time, error) {
 
 	currentTime := time.Now().In(location)
 	return currentTime, nil
+}
+
+func generateRandomString(length int) string {
+	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	var result string
+	for i := 0; i < length; i++ {
+		n, _ := rand.Int(rand.Reader, big.NewInt(math.MaxInt64))
+		result += string(charset[n.Int64()%int64(len(charset))])
+	}
+	return result
+}
+
+func hashPassword(password string) (string, error) {
+	var passwordBytes = []byte(password)
+	hashedPasswordBytes, err := bcrypt.GenerateFromPassword(passwordBytes, 10)
+	return string(hashedPasswordBytes), err
+}
+
+func writeLoginCookie(c echo.Context, name string) {
+	cookie := new(http.Cookie)
+	cookie.Name = "username"
+	cookie.Value = name
+	cookie.Expires = time.Now().Add(30 * 24 * time.Hour)
+	cookie.Secure = true
+	cookie.HttpOnly = true
+	//cookie.SameSite = true
+	c.SetCookie(cookie)
+}
+
+func readLoginCookie(c echo.Context) (string, bool) {
+	cookie, err := c.Cookie("username")
+	if err != nil {
+		return "", false
+	}
+	return cookie.Value, true
 }

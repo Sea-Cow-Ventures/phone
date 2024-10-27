@@ -3,8 +3,28 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Sea Cow Phone - Login</title>
+	<title>Sea Cow Phone - Login Test</title>
 	<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+	<!-- PWA Meta Tags -->
+	<meta name="mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<meta name="apple-mobile-web-app-title" content="Sea Cow Phone Login">
+	<link rel="manifest" href="/manifest.json">
+
+
+	<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+	<link rel="manifest" href="/site.webmanifest">
+	<link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+	<meta name="msapplication-TileColor" content="#da532c">
+	<meta name="theme-color" content="#c6e8ff">
+
+
+
+	<meta name="theme-color" content="#ffffff">
 </head>
 <style>
 	button:disabled {
@@ -15,31 +35,31 @@
 <body class="bg-gray-100">
 
 	<div class="bg-blue-500 text-white p-4">
-		<div class="container mx-auto">
-			<h1 class="text-xl font-semibold">Sea Cow Phone - Login</h1>
+		<div class="container mx-auto flex items-center">
+			<img src="/kayaking-staugustine-logo-512.webp" alt="Sea Cow Phone Logo" style="height: 40px; margin-right: 15px;">
+			<h1 class="text-xl font-semibold">Sea Cow Phone</h1>
 		</div>
 	</div>
 
 	<div class="container mx-auto mt-8 bg-gray-100 h-screen flex items-center justify-center">
 		<div class="max-w-md w-full p-8 bg-white rounded-md shadow-md">
-			<h2 class="text-2xl font-semibold mb-6">Login</h2>
-
-			<form action="/signin" method="POST" class="mb-4">
+			<div class="flex items-center justify-between">
+				<h2 class="text-2xl font-semibold mb-6">Login</h2>
+				<p id="errorText" class="text-red-500 text-lg font-bold hidden mb-6">Invalid username or password</p>
+			</div>
+			<form id="loginForm" action="./signin" method="POST" class="mb-4">
 				<div class="mb-4">
 					<label for="username" class="block text-sm font-medium text-gray-600">Username</label>
 					<input type="text" id="username" name="username" class="mt-1 p-2 w-full border rounded-md">
 				</div>
-
 				<div class="mb-4">
 					<label for="password" class="block text-sm font-medium text-gray-600">Password</label>
 					<input type="password" id="password" name="password" class="mt-1 p-2 w-full border rounded-md">
 				</div>
-
 				<button type="submit" id="loginBtn" class="w-full py-2 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring focus:border-green-300" disabled>
 					Login
 				</button>
 			</form>
-
 		</div>
 	</div>
 
@@ -47,6 +67,7 @@
 		const usernameInput = document.getElementById('username');
 		const passwordInput = document.getElementById('password');
 		const loginBtn = document.getElementById('loginBtn');
+		const errorText = document.getElementById('errorText');
 
 		usernameInput.addEventListener('input', validateFields);
 		passwordInput.addEventListener('input', validateFields);
@@ -57,10 +78,47 @@
 
 			if (usernameValue !== '' && passwordValue !== '') {
 				loginBtn.removeAttribute('disabled');
+				usernameInput.classList.remove('border-red-500');
+				passwordInput.classList.remove('border-red-500');
+				errorText.classList.add('hidden');
 			} else {
 				loginBtn.setAttribute('disabled', 'disabled');
 			}
 		}
+
+		document.getElementById('loginForm').addEventListener('submit', function(event) {
+			event.preventDefault();
+
+			const formData = new URLSearchParams();
+			formData.append('username', usernameInput.value);
+			formData.append('password', passwordInput.value);
+
+			fetch('./signin', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded',
+				},
+				body: formData
+			})
+			.then(response => response.json())
+			.then(data => {
+				if (data.success && data.redirectURL) {
+					window.location.href = data.redirectURL;
+				} else {
+					errorText.textContent = 'Invalid Login. Please try again.';
+					errorText.classList.remove('hidden');
+					usernameInput.classList.add('border-red-500');
+					passwordInput.classList.add('border-red-500');
+				}
+			})
+			.catch(error => {
+				console.error('Login failed', error);
+				errorText.textContent = 'Invalid Login. Please try again.';
+				errorText.classList.remove('hidden');
+				usernameInput.classList.add('border-red-500');
+				passwordInput.classList.add('border-red-500');
+			});
+		});
 	</script>
 
 </body>
