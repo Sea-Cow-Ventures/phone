@@ -112,11 +112,21 @@ func init() {
 func main() {
 	logger.Info("Ready")
 
-	go readAccountCallHistory()
-	go readAccountMessageHistory()
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
 
-	for {
+	for range ticker.C {
+		go func() {
+			if err := readAccountCallHistory(); err != nil {
+				logger.Sugar().Errorf("Error reading call history: %v", err)
+			}
+		}()
 
+		go func() {
+			if err := readAccountMessageHistory(); err != nil {
+				logger.Sugar().Errorf("Error reading message history: %v", err)
+			}
+		}()
 	}
 }
 

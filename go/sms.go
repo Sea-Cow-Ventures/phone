@@ -10,6 +10,8 @@ import (
 )
 
 type Message struct {
+	From     string `db:"fromNumber"`
+	To       string `db:"toNumber"`
 	Body     string `db:"body"`
 	SentDate string `db:"sentDate"`
 }
@@ -25,13 +27,13 @@ func readAccountMessageHistory() error {
 	sort.Slice(messages, func(i, j int) bool {
 		createdDateI, errI := time.Parse(time.RFC1123Z, *messages[i].DateCreated)
 		if errI != nil {
-			fmt.Println("Error parsing created date for index", i, ":", errI)
+			logger.Sugar().Errorf("Error parsing created date for index %d:%w", i, errI)
 			return false
 		}
 
 		createdDateJ, errJ := time.Parse(time.RFC1123Z, *messages[j].DateCreated)
 		if errJ != nil {
-			fmt.Println("Error parsing created date for index", j, ":", errJ)
+			logger.Sugar().Errorf("Error parsing created date for index %d:%w", j, errJ)
 			return false
 		}
 
@@ -43,23 +45,22 @@ func readAccountMessageHistory() error {
 	for _, msg := range messages {
 		exists, err := doesMessageExist(*msg.Sid)
 		if err != nil {
-			fmt.Println("Error reading messages:", err)
+			return fmt.Errorf("error reading messages: %w", err)
 		}
-
-		phoneNumber, err := t.LookupsV2.FetchPhoneNumber(*msg.To, nil)
-		if err != nil {
-			fmt.Println("Error fetching phone number:", err)
-		}
-
-		logger.Info("Phone number", zap.Any("phoneNumber", phoneNumber))
 
 		if !exists {
 			err = insertMessageLog(msg)
 			insertedMessages++
 		}
 		if err != nil {
-			fmt.Println("Error inserting message:", err)
+			return fmt.Errorf("error inserting message: %w", err)
 		}
+
+		//_, err = lookupPhoneNumber(*msg.To)
+		//if err != nil {
+		//	return fmt.Errorf("error looking up phone number: %w", err)
+		//}
+
 	}
 
 	logger.Info("Read account message history", zap.Int("NewMessages", insertedMessages))
@@ -163,7 +164,18 @@ func readMessagedPhoneNumbers() ([]string, error) {
 
 func readMessagesByPhoneNumber(phoneNumber string) ([]Message, error) {
 	query := `
-		SELECT body, sentDate FROM sms WHERE fromNumber = ? OR toNumber = ? ORDER BY sentDate DESC
+		SELECT 
+			fromNumber, 
+			toNumber, 
+			body, 
+			sentDate 
+		FROM 
+			sms 
+		WHERE 
+			fromNumber = ? 
+			OR toNumber = ? 
+		ORDER BY 
+			sentDate ASC
 	`
 
 	var messages []Message

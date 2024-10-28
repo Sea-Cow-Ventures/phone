@@ -75,3 +75,16 @@ CREATE TABLE sms
         UNIQUE (messageSid DESC)
 );
 
+CREATE TABLE phoneNumberLookups
+(
+    id                  INT AUTO_INCREMENT
+        PRIMARY KEY,
+    callingCountryCode  VARCHAR(5)   NULL,
+    countryCode         VARCHAR(5)   NULL,
+    phoneNumber         VARCHAR(20)  NULL,
+    nationalFormat      VARCHAR(20)  NULL,
+    valid               TINYINT(1)   NULL,
+    callerName          VARCHAR(50)  NULL,
+    callerType          VARCHAR(30)  NULL,
+    url                 VARCHAR(255) NULL
+);

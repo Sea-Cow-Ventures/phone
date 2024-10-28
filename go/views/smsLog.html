@@ -7,24 +7,34 @@
 	<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 	<style>
 		.conversation-list {
+			min-width: 200px;
+			max-width: 400px;
 			width: 25%;
-			border-right: 1px solid #ddd;
+			border-right: 1px solid #EFBC9B;
 			overflow-y: auto;
+			resize: horizontal;
 		}
 		.conversation-detail {
-			width: 75%;
+			flex-grow: 1;
 			padding: 20px;
+			display: flex;
+			flex-direction: column;
 		}
 		.message {
 			margin-bottom: 10px;
 			padding: 10px;
 			border-radius: 15px;
-			max-width: 60%;
+			max-width: 100%;
+			width: fit-content;
 			position: relative;
 			display: inline-block;
+			box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.15), 0 2px 5px rgba(0, 0, 0, 0.1);
+			word-wrap: break-word;
+			overflow-wrap: break-word;
+			white-space: pre-wrap; /* Ensure text wraps */
 		}
 		.message.sent {
-			background-color: #e1ffc7;
+			background-color: #cce5ff;
 			align-self: flex-end;
 			margin-left: auto;
 		}
@@ -33,12 +43,70 @@
 			align-self: flex-start;
 			margin-right: auto;
 		}
+		#messageContainer {
+			display: flex;
+			flex-direction: column;
+			flex-grow: 1;
+			overflow-y: auto;
+			padding: 10px;
+			height: 0;
+		}
 		.message-time {
 			font-size: 0.75rem;
 			color: #555;
-			position: absolute;
-			bottom: -15px;
-			right: 10px;
+			margin-top: 5px;
+			text-align: right;
+		}
+		.selected-conversation {
+			background-color: #EFBC9B;
+		}
+		.message-input-bar {
+			background-color: #f9f9f9;
+			position: sticky;
+			bottom: 0;
+			width: 100%;
+			border-top: 1px solid #ddd;
+		}
+
+		/* Mobile-specific styles */
+		@media (max-width: 768px) {
+			.conversation-list {
+				position: fixed;
+				left: -100%;
+				top: 0;
+				height: 100%;
+				background-color: #f7fafc;
+				transition: left 0.3s ease;
+				z-index: 10;
+			}
+			.conversation-list.open {
+				left: 0;
+			}
+			.conversation-detail {
+				margin-left: 0;
+				transition: margin-left 0.3s ease;
+			}
+			#toggleDrawer {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				width: auto;
+				background-color: #EFBC9B; /* Orange color */
+				color: white;
+				padding: 5px 10px;
+				border: none;
+				cursor: pointer;
+				margin-left: auto;
+				margin-right: 10px;
+				border-radius: 5px;
+			}
+			#toggleDrawer svg {
+				transition: transform 0.3s ease;
+				margin-left: 5px;
+			}
+			#toggleDrawer.open svg {
+				transform: rotate(90deg);
+			}
 		}
 	</style>
 </head>
@@ -64,18 +132,36 @@
 	</div>
 
 	<div class="flex flex-grow">
+		<div class="conversation-detail flex flex-col bg-white">
+			<button id="toggleDrawer" class="md:hidden">
+				Select Conversation
+				<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h18M3 6h18M3 18h18" />
+				</svg>
+			</button>
+			<h2 class="text-lg font-semibold mb-4">
+				Messages <span id="selectedConversationIndicator" class="text-sm text-gray-600">●</span>
+			</h2>
+			<div id="messageContainer" class="flex flex-col flex-grow overflow-y-auto">
+				<!-- Messages will be populated here -->
+			</div>
+			<div class="message-input-bar flex items-center p-4 border-t">
+				<label for="fileInput" class="cursor-pointer mr-2">
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600 hover:text-gray-800" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+					</svg>
+				</label>
+				<input type="file" id="fileInput" class="hidden" />
+				<input type="text" id="messageInput" class="flex-grow border rounded-md p-2" placeholder="Type your message..." />
+				<button id="sendButton" class="ml-2 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Send</button>
+			</div>
+		</div>
+
 		<div class="conversation-list bg-gray-100 p-4">
 			<h2 class="text-lg font-semibold mb-4">Conversations</h2>
 			<ul id="conversationList">
 				<!-- Populate conversation list with phone numbers -->
 			</ul>
-		</div>
-
-		<div class="conversation-detail flex flex-col bg-white">
-			<h2 class="text-lg font-semibold mb-4">Messages</h2>
-			<div id="messageContainer" class="flex flex-col flex-grow overflow-y-auto">
-				<!-- Messages will be populated here -->
-			</div>
 		</div>
 	</div>
 
@@ -93,13 +179,32 @@
 						li.textContent = phoneNumber;
 						li.onclick = function() {
 							loadMessages(phoneNumber);
+							// Auto-close the drawer on selection
+							document.querySelector('.conversation-list').classList.remove('open');
+							document.getElementById('toggleDrawer').classList.remove('open');
 						};
 						document.getElementById('conversationList').appendChild(li);
 					});
 				});
 		};
 
+		let selectedConversation = null;
+
 		function loadMessages(phoneNumber) {
+			if (selectedConversation) {
+				selectedConversation.classList.remove('selected-conversation');
+			}
+
+			const conversationListItems = document.querySelectorAll('#conversationList li');
+			conversationListItems.forEach(item => {
+				if (item.textContent === phoneNumber) {
+					item.classList.add('selected-conversation');
+					selectedConversation = item;
+				}
+			});
+
+			document.getElementById('selectedConversationIndicator').textContent = `● ${phoneNumber}`;
+
 			fetch('/readMessageHistory', {
 				method: 'POST',
 				headers: {
@@ -114,7 +219,11 @@
 
 				messages.forEach(message => {
 					const messageDiv = document.createElement('div');
-					messageDiv.className = `message ${message.type}`;
+					if (['+19048752208', '+19043158442'].includes(message.From)) {
+						messageDiv.className = 'message sent';
+					} else {
+						messageDiv.className = 'message received';
+					}
 					
 					const messageText = document.createElement('div');
 					messageText.textContent = message.Body;
@@ -128,8 +237,34 @@
 					messageDiv.appendChild(messageTime);
 					messageContainer.appendChild(messageDiv);
 				});
+
+				// Scroll to the bottom
+				messageContainer.scrollTop = messageContainer.scrollHeight;
 			});
 		}
+
+		document.getElementById('sendButton').addEventListener('click', function() {
+			const messageText = document.getElementById('messageInput').value;
+			const fileInput = document.getElementById('fileInput');
+			const file = fileInput.files[0];
+
+			// Handle sending the message and file
+			console.log('Message:', messageText);
+			if (file) {
+				console.log('File:', file.name);
+			}
+
+			// Clear the input fields
+			document.getElementById('messageInput').value = '';
+			fileInput.value = '';
+		});
+
+		// Toggle drawer for mobile
+		document.getElementById('toggleDrawer').addEventListener('click', function() {
+			const conversationList = document.querySelector('.conversation-list');
+			conversationList.classList.toggle('open');
+			this.classList.toggle('open');
+		});
 	</script>
 </body>
 </html>

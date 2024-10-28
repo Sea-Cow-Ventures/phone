@@ -64,10 +64,10 @@ func initWebserver() {
 	// Define routes
 	e.Static("/", "views")
 	e.GET("/", loginHandler)
-	e.GET("/home", homeHandler)
-	e.GET("/smsLog", smsLogHandler)
-	e.GET("/readMessagedPhoneNumbers", readMessagedPhoneNumbersHandler)
-	e.POST("/readMessageHistory", readMessagesByPhoneNumberHandler)
+	e.GET("/home", homeHandler, isLoggedIn)
+	e.GET("/smsLog", smsLogHandler, isLoggedIn)
+	e.GET("/readMessagedPhoneNumbers", readMessagedPhoneNumbersHandler, isLoggedIn)
+	e.POST("/readMessageHistory", readMessagesByPhoneNumberHandler, isLoggedIn)
 	e.POST("/signin", signinHandler)
 	e.POST("/sms", smsHandler)
 	e.POST("/voice", voiceHandler)
@@ -190,6 +190,19 @@ func recoverMiddleware() echo.MiddlewareFunc {
 			}
 			return next(c)
 		}
+	}
+}
+
+func isLoggedIn(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		_, found := readLoginCookie(c)
+		if !found {
+			return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+				"success": false,
+				"error":   "Unauthorized",
+			})
+		}
+		return next(c)
 	}
 }
 
