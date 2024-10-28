@@ -67,6 +67,7 @@ func initWebserver() {
 	e.GET("/home", homeHandler, isLoggedIn)
 	e.GET("/smsLog", smsLogHandler, isLoggedIn)
 	e.GET("/readMessagedPhoneNumbers", readMessagedPhoneNumbersHandler, isLoggedIn)
+	e.POST("/sendMessage", sendMessageHandler, isLoggedIn)
 	e.POST("/readMessageHistory", readMessagesByPhoneNumberHandler, isLoggedIn)
 	e.POST("/signin", signinHandler)
 	e.POST("/sms", smsHandler)
@@ -474,7 +475,19 @@ func connectAgentHandler(c echo.Context) error {
 }
 
 func homeHandler(c echo.Context) error {
-	return c.Render(http.StatusOK, "home.html", nil)
+	cookie, err := c.Cookie("username")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Bad Cookie",
+		})
+	}
+
+	data := map[string]interface{}{
+		"Username": cookie.Value,
+	}
+
+	return c.Render(http.StatusOK, "home.html", data)
 }
 
 func smsLogHandler(c echo.Context) error {
@@ -529,6 +542,24 @@ func readMessagesByPhoneNumberHandler(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, messages)
+}
+
+func sendMessageHandler(c echo.Context) error {
+	toNumber := c.FormValue("toNumber")
+	message := c.FormValue("message")
+
+	err := sendMessage(toNumber, message)
+	if err != nil {
+		logger.Error("Failed to send message to "+toNumber, zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"error":   "Failed to send message to " + toNumber,
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"success": true,
+	})
 }
 
 func loginHandler(c echo.Context) error {

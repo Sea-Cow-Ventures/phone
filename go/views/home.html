@@ -7,26 +7,7 @@
 	<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
 </head>
 <body class="bg-gray-100">
-
-	<div class="bg-blue-500 text-white p-4">
-		<div class="container mx-auto">
-			<div class="flex items-center">
-				<img src="/kayaking-staugustine-logo-512.webp" alt="Sea Cow Phone Logo" style="height: 40px; margin-right: 15px;">
-				<h1 class="text-xl font-semibold">Sea Cow Phone</h1>
-			</div>
-			<div class="flex justify-between items-center">
-	
-				<div class="flex space-x-4">
-					<a href="/callLog" class="text-white font-bold border border-white px-4 py-1 rounded-md transition duration-300 ease-in-out transform hover:bg-white hover:text-blue-500 hover:scale-105 active:scale-95">Call Logs</a>
-					<a href="/smsLog" class="text-white font-bold border border-white px-4 py-1 rounded-md ml-2 transition duration-300 ease-in-out transform hover:bg-white hover:text-blue-500 hover:scale-105 active:scale-95">SMS Logs</a>
-					<div class="flex items-center">
-						<span class="mr-2">Logged in as:</span>
-						<span class="font-semibold">John Doe</span> <!-- Replace with the actual logged-in user's name -->
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
+	{{ template "header.html" . }}
 
 	<div id="dialerContainer" class="container mx-auto mt-8 bg-gray-100 h-screen flex items-center justify-center">
 		<div class="max-w-md w-full p-8 bg-white rounded-md shadow-md">

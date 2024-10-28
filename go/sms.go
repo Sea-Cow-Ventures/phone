@@ -186,3 +186,23 @@ func readMessagesByPhoneNumber(phoneNumber string) ([]Message, error) {
 
 	return messages, nil
 }
+
+func sendMessage(toNumber string, message string) error {
+	params := &twilioApi.CreateMessageParams{}
+	params.SetTo(toNumber)
+	params.SetFrom(cnf.PhoneNumber)
+	params.SetBody(message)
+
+	if message == "" {
+		return fmt.Errorf("message body cannot be empty")
+	}
+
+	resp, err := t.Api.CreateMessage(params)
+	if err != nil {
+		return fmt.Errorf("failed to send message: %w", err)
+	}
+
+	logger.Info("Sent message", zap.Any("response", resp))
+
+	return nil
+}

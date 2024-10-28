@@ -112,26 +112,16 @@
 </head>
 <body class="flex flex-col h-screen">
 	<!-- Header -->
-	<div class="bg-blue-500 text-white p-4">
-		<div class="container mx-auto">
-			<div class="flex items-center">
-				<img src="/kayaking-staugustine-logo-512.webp" alt="Sea Cow Phone Logo" style="height: 40px; margin-right: 15px;">
-				<h1 class="text-xl font-semibold">Sea Cow Phone</h1>
-			</div>
-			<div class="flex justify-between items-center">
-				<div class="flex space-x-4">
-					<a href="/callLog" class="text-white font-bold border border-white px-4 py-1 rounded-md transition duration-300 ease-in-out transform hover:bg-white hover:text-blue-500 hover:scale-105 active:scale-95">Call Logs</a>
-					<a href="/smsLog" class="text-white font-bold border border-white px-4 py-1 rounded-md ml-2 transition duration-300 ease-in-out transform hover:bg-white hover:text-blue-500 hover:scale-105 active:scale-95">SMS Logs</a>
-					<div class="flex items-center">
-						<span class="mr-2">Logged in as:</span>
-						<span class="font-semibold">{{.Username}}</span>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
+	{{ template "header.html" . }}
 
-	<div class="flex flex-grow">
+	<div class="flex flex-grow flex-row">
+		<div class="conversation-list bg-gray-100 p-4">
+			<h2 class="text-lg font-semibold mb-4">Conversations</h2>
+			<ul id="conversationList">
+				<!-- Populate conversation list with phone numbers -->
+			</ul>
+		</div>
+
 		<div class="conversation-detail flex flex-col bg-white">
 			<button id="toggleDrawer" class="md:hidden">
 				Select Conversation
@@ -156,115 +146,143 @@
 				<button id="sendButton" class="ml-2 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">Send</button>
 			</div>
 		</div>
-
-		<div class="conversation-list bg-gray-100 p-4">
-			<h2 class="text-lg font-semibold mb-4">Conversations</h2>
-			<ul id="conversationList">
-				<!-- Populate conversation list with phone numbers -->
-			</ul>
-		</div>
 	</div>
 
 	<script>
-		const conversations = {};
+	const conversations = {};
 
-		window.onload = function() {
-			fetch('/readMessagedPhoneNumbers')
-				.then(response => response.json())
-				.then(data => {
-					data.forEach(phoneNumber => {
-						conversations[phoneNumber] = [];
-						const li = document.createElement('li');
-						li.className = "cursor-pointer p-2 hover:bg-gray-200";
-						li.textContent = phoneNumber;
-						li.onclick = function() {
-							loadMessages(phoneNumber);
-							// Auto-close the drawer on selection
-							document.querySelector('.conversation-list').classList.remove('open');
-							document.getElementById('toggleDrawer').classList.remove('open');
-						};
-						document.getElementById('conversationList').appendChild(li);
-					});
-				});
-		};
-
-		let selectedConversation = null;
-
-		function loadMessages(phoneNumber) {
-			if (selectedConversation) {
-				selectedConversation.classList.remove('selected-conversation');
-			}
-
-			const conversationListItems = document.querySelectorAll('#conversationList li');
-			conversationListItems.forEach(item => {
-				if (item.textContent === phoneNumber) {
-					item.classList.add('selected-conversation');
-					selectedConversation = item;
-				}
-			});
-
-			document.getElementById('selectedConversationIndicator').textContent = `● ${phoneNumber}`;
-
-			fetch('/readMessageHistory', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/x-www-form-urlencoded'
-				},
-				body: new URLSearchParams({ phoneNumber: phoneNumber })
-			})
+	window.onload = function() {
+		fetch('/readMessagedPhoneNumbers')
 			.then(response => response.json())
-			.then(messages => {
-				const messageContainer = document.getElementById('messageContainer');
-				messageContainer.innerHTML = ''; // Clear previous messages
-
-				messages.forEach(message => {
-					const messageDiv = document.createElement('div');
-					if (['+19048752208', '+19043158442'].includes(message.From)) {
-						messageDiv.className = 'message sent';
-					} else {
-						messageDiv.className = 'message received';
-					}
-					
-					const messageText = document.createElement('div');
-					messageText.textContent = message.Body;
-					
-					const messageTime = document.createElement('div');
-					messageTime.className = 'message-time';
-					const date = new Date(message.SentDate);
-					messageTime.textContent = `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-
-					messageDiv.appendChild(messageText);
-					messageDiv.appendChild(messageTime);
-					messageContainer.appendChild(messageDiv);
+			.then(data => {
+				data.forEach(phoneNumber => {
+					conversations[phoneNumber] = [];
+					const li = document.createElement('li');
+					li.className = "cursor-pointer p-2 hover:bg-gray-200";
+					li.textContent = phoneNumber;
+					li.onclick = function() {
+						loadMessages(phoneNumber);
+						// Auto-close the drawer on selection
+						document.querySelector('.conversation-list').classList.remove('open');
+						document.getElementById('toggleDrawer').classList.remove('open');
+					};
+					document.getElementById('conversationList').appendChild(li);
 				});
-
-				// Scroll to the bottom
-				messageContainer.scrollTop = messageContainer.scrollHeight;
 			});
+	};
+
+	let selectedConversation = null;
+
+	function loadMessages(phoneNumber) {
+		if (selectedConversation) {
+			selectedConversation.classList.remove('selected-conversation');
 		}
 
-		document.getElementById('sendButton').addEventListener('click', function() {
-			const messageText = document.getElementById('messageInput').value;
-			const fileInput = document.getElementById('fileInput');
-			const file = fileInput.files[0];
-
-			// Handle sending the message and file
-			console.log('Message:', messageText);
-			if (file) {
-				console.log('File:', file.name);
+		const conversationListItems = document.querySelectorAll('#conversationList li');
+		conversationListItems.forEach(item => {
+			if (item.textContent === phoneNumber) {
+				item.classList.add('selected-conversation');
+				selectedConversation = item;
 			}
+		});
+
+		document.getElementById('selectedConversationIndicator').textContent = `● ${phoneNumber}`;
+
+		fetch('/readMessageHistory', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded'
+			},
+			body: new URLSearchParams({ phoneNumber: phoneNumber })
+		})
+		.then(response => response.json())
+		.then(messages => {
+			const messageContainer = document.getElementById('messageContainer');
+			messageContainer.innerHTML = ''; // Clear previous messages
+
+			messages.forEach(message => {
+				const messageDiv = document.createElement('div');
+				if (['+19048752208', '+19043158442'].includes(message.From)) {
+					messageDiv.className = 'message sent';
+				} else {
+					messageDiv.className = 'message received';
+				}
+				
+				const messageText = document.createElement('div');
+				messageText.textContent = message.Body;
+				
+				const messageTime = document.createElement('div');
+				messageTime.className = 'message-time';
+				const date = new Date(message.SentDate);
+				messageTime.textContent = `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
+				messageDiv.appendChild(messageText);
+				messageDiv.appendChild(messageTime);
+				messageContainer.appendChild(messageDiv);
+			});
+
+			// Scroll to the bottom
+			messageContainer.scrollTop = messageContainer.scrollHeight;
+		});
+	}
+
+	document.getElementById('sendButton').addEventListener('click', function() {
+		const messageText = document.getElementById('messageInput').value;
+		const fileInput = document.getElementById('fileInput');
+		const file = fileInput.files[0];
+		const toNumber = document.getElementById('selectedConversationIndicator').textContent.trim().substring(2); // Assuming the indicator is like "● +1234567890"
+
+		if (!toNumber) {
+			alert("Please select a conversation first.");
+			return;
+		}
+
+		if (!messageText) {
+			alert("Message text cannot be empty.");
+			return;
+		}
+
+		// Create form-encoded data
+		const formData = new URLSearchParams();
+		formData.append('toNumber', toNumber);
+		formData.append('message', messageText);
+
+		// Post the message to the server
+		fetch('/sendMessage', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded'
+			},
+			body: formData.toString()
+		})
+		.then(response => {
+			if (!response.ok) {
+				throw new Error('Failed to send message');
+			}
+			return response.json();
+		})
+		.then(data => {
+			console.log('Message sent:', data);
 
 			// Clear the input fields
 			document.getElementById('messageInput').value = '';
 			fileInput.value = '';
-		});
 
-		// Toggle drawer for mobile
-		document.getElementById('toggleDrawer').addEventListener('click', function() {
-			const conversationList = document.querySelector('.conversation-list');
-			conversationList.classList.toggle('open');
-			this.classList.toggle('open');
+			// Reload messages for the current conversation
+			loadMessages(toNumber);
+		})
+		.catch(error => {
+			console.error('Error:', error);
+			alert('Failed to send message');
 		});
-	</script>
+	});
+
+	// Toggle drawer for mobile
+	document.getElementById('toggleDrawer').addEventListener('click', function() {
+		const conversationList = document.querySelector('.conversation-list');
+		conversationList.classList.toggle('open');
+		this.classList.toggle('open');
+	});
+</script></script>
 </body>
 </html>
