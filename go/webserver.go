@@ -70,6 +70,7 @@ func initWebserver() {
 	e.POST("/sendMessage", sendMessageHandler, isLoggedIn)
 	e.POST("/readMessageHistory", readMessagesByPhoneNumberHandler, isLoggedIn)
 	e.POST("/signin", signinHandler)
+	e.GET("/logout", logoutHandler, isLoggedIn)
 	e.POST("/sms", smsHandler)
 	e.POST("/voice", voiceHandler)
 	e.POST("/welcome", welcomeHandler)
@@ -484,10 +485,23 @@ func homeHandler(c echo.Context) error {
 	}
 
 	data := map[string]interface{}{
-		"Username": cookie.Value,
+		"Username":       cookie.Value,
+		"MissedCalls":    1,
+		"UnreadMessages": 2,
 	}
 
 	return c.Render(http.StatusOK, "home.html", data)
+}
+
+func logoutHandler(c echo.Context) error {
+	cookie := new(http.Cookie)
+	cookie.Name = "username"
+	cookie.Value = ""
+	cookie.Path = "/"
+	cookie.MaxAge = -1
+	c.SetCookie(cookie)
+
+	return c.Redirect(http.StatusFound, "/")
 }
 
 func smsLogHandler(c echo.Context) error {
@@ -509,8 +523,10 @@ func smsLogHandler(c echo.Context) error {
 	}
 
 	data := map[string]interface{}{
-		"Conversations": phoneNumbers,
-		"Username":      cookie.Value,
+		"Conversations":  phoneNumbers,
+		"Username":       cookie.Value,
+		"MissedCalls":    1,
+		"UnreadMessages": 2,
 	}
 
 	return c.Render(http.StatusOK, "smsLog.html", data)

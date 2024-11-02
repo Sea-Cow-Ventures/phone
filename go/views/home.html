@@ -5,8 +5,30 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Sea Cow Phone</title>
 	<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+	<style>
+		#notificationModal {
+			display: none;
+			position: fixed;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0, 0, 0, 0.8);
+			z-index: 1000;
+			justify-content: center;
+			align-items: center;
+		}
+	</style>
 </head>
 <body class="bg-gray-100">
+	<div id="notificationModal" class="flex">
+		<div class="bg-white p-8 rounded-md shadow-md text-center">
+			<h2 class="text-2xl font-semibold mb-4">Enable Notifications</h2>
+			<p class="mb-6">To receive important updates about incoming calls and messages, please enable notifications.</p>
+			<button id="enableNotificationsButton" class="bg-blue-500 text-white px-4 py-2 rounded-md">Enable Notifications</button>
+		</div>
+	</div>
+
 	{{ template "header.html" . }}
 
 	<div id="dialerContainer" class="container mx-auto mt-8 bg-gray-100 h-screen flex items-center justify-center">
@@ -25,7 +47,37 @@
 			</style>
 	
 			<script>
-				// polyfill
+				document.addEventListener('DOMContentLoaded', function () {
+					const notificationModal = document.getElementById('notificationModal');
+					const enableNotificationsButton = document.getElementById('enableNotificationsButton');
+
+					function askNotificationPermission() {
+						return new Promise(function(resolve, reject) {
+							const permissionResult = Notification.requestPermission(function(result) {
+								resolve(result);
+							});
+
+							if (permissionResult) {
+								permissionResult.then(resolve, reject);
+							}
+						}).then(function(permissionResult) {
+							if (permissionResult !== 'granted') {
+								throw new Error('We weren\'t granted permission.');
+							} else {
+								notificationModal.style.display = 'none';
+							}
+						});
+					}
+
+					enableNotificationsButton.addEventListener('click', function() {
+						askNotificationPermission();
+					});
+
+					if (Notification.permission !== 'granted') {
+						notificationModal.style.display = 'flex';
+					}
+				});
+
 				var AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext;
 	
 				function Tone(context, freq1, freq2) {
@@ -101,10 +153,10 @@
 						if (dtmf.status == 0) {
 							dtmf.start();
 						}
-						setTimeout(() => dtmf.stop(), 200); // Stop the tone after 200ms
+						setTimeout(() => dtmf.stop(), 200);
 					}
 	
-					window.addDigit = addDigit; // Expose addDigit to the global scope
+					window.addDigit = addDigit;
 	
 					document.querySelectorAll('.dtmf-button').forEach(button => {
 						button.addEventListener('mousedown', function(e) {
@@ -120,13 +172,12 @@
 						}
 					});
 	
-					// Enhanced keyboard navigation and selection
 					let buttonIndex = 0;
 					const buttons = document.querySelectorAll('.dtmf-button');
-					const buttonsPerRow = 3; // Assuming a 3x4 grid
+					const buttonsPerRow = 3;
 					document.body.addEventListener('keydown', function(e) {
 						if(['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'Enter', ' '].includes(e.key)) {
-							e.preventDefault(); // Prevent default to handle focus manually
+							e.preventDefault();
 							switch (e.key) {
 								case 'ArrowRight':
 									buttonIndex = (buttonIndex + 1) % buttons.length;
@@ -154,7 +205,6 @@
 					document.getElementById('actionButton').addEventListener('click', function () {
 						const phoneNumber = document.getElementById('phoneNumber').value.trim();
 						if (phoneNumber !== '') {
-							// Show modal
 							const modal = document.createElement('div');
 							modal.innerHTML = `
 								<div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center" style="width: 100%; height: 100%;">

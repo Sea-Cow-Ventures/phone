@@ -1,17 +1,45 @@
 <div class="bg-blue-500 text-white p-4">
 	<div class="container mx-auto">
-		<div class="flex items-center">
-			<img src="/kayaking-staugustine-logo-512.webp" alt="Sea Cow Phone Logo" style="height: 40px; margin-right: 15px;">
-			<h1 class="text-xl font-semibold">Sea Cow Phone</h1>
-		</div>
-		<div class="flex justify-between items-center">
-			<div class="flex space-x-4">
-				<a href="/callLog" class="text-white font-bold border border-white px-4 py-1 rounded-md transition duration-300 ease-in-out transform hover:bg-white hover:text-blue-500 hover:scale-105 active:scale-95">Call Logs</a>
-				<a href="/smsLog" class="text-white font-bold border border-white px-4 py-1 rounded-md ml-2 transition duration-300 ease-in-out transform hover:bg-white hover:text-blue-500 hover:scale-105 active:scale-95">SMS Logs</a>
-				<div class="flex items-center">
+		<div class="flex items-center justify-between mb-4">
+			<div class="flex items-center">
+				<img src="/kayaking-staugustine-logo-512.webp" alt="Sea Cow Phone Logo" style="height: 40px; margin-right: 15px;">
+				<h1 class="text-xl font-semibold">Sea Cow Phone</h1>
+				<div class="flex items-center ml-4">
 					<span class="mr-2">Logged in as:</span>
 					<span class="font-semibold">{{.Username}}</span>
 				</div>
+			</div>
+		</div>
+		<div class="flex justify-between items-center">
+			<div class="flex space-x-4">
+				<div class="relative">
+					<a href="/callLog" class="flex items-center text-white font-bold border border-white px-4 py-1 rounded-md transition duration-300 ease-in-out transform hover:bg-white hover:text-blue-500 hover:scale-105 active:scale-95">
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 512 512" fill="currentColor">
+							<path d="M164.9 24.6c-7.7-18.6-28-28.5-47.4-23.2l-88 24C12.1 30.2 0 46 0 64C0 311.4 200.6 512 448 512c18 0 33.8-12.1 38.6-29.5l24-88c5.3-19.4-4.6-39.7-23.2-47.4l-96-40c-16.3-6.8-35.2-2.1-46.3 11.6L304.7 368C234.3 334.7 177.3 277.7 144 207.3L193.3 167c13.7-11.2 18.4-30 11.6-46.3l-40-96z"/>
+						</svg>
+						Calls
+					</a>
+					{{if gt .MissedCalls 0}}
+					<span class="absolute -top-1 -right-1 flex items-center justify-center h-5 w-5 rounded-full bg-red-500 text-white text-[10px] leading-tight">{{.MissedCalls}}</span>
+					{{end}}
+				</div>
+				<div class="relative">
+					<a href="/smsLog" class="flex items-center text-white font-bold border border-white px-4 py-1 rounded-md ml-2 transition duration-300 ease-in-out transform hover:bg-white hover:text-blue-500 hover:scale-105 active:scale-95">
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 512 512" fill="currentColor">
+							<path d="M64 0C28.7 0 0 28.7 0 64L0 352c0 35.3 28.7 64 64 64l96 0 0 80c0 6.1 3.4 11.6 8.8 14.3s11.9 2.1 16.8-1.5L309.3 416 448 416c35.3 0 64-28.7 64-64l0-288c0-35.3-28.7-64-64-64L64 0z"/>
+						</svg>
+						Messages
+					</a>
+					{{if gt .UnreadMessages 0}}
+					<span class="absolute -top-1 -right-1 flex items-center justify-center h-5 w-5 rounded-full bg-red-500 text-white text-[10px] leading-tight">{{.UnreadMessages}}</span>
+					{{end}}
+				</div>
+				<a href="/logout" class="flex items-center text-white font-bold border border-white px-4 py-1 rounded-md ml-2 transition duration-300 ease-in-out transform hover:bg-white hover:text-blue-500 hover:scale-105 active:scale-95">
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 512 512" fill="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M377.9 105.9L500.7 228.7c7.2 7.2 11.3 17.1 11.3 27.3s-4.1 20.1-11.3 27.3L377.9 406.1c-6.4 6.4-15 9.9-24 9.9c-18.7 0-33.9-15.2-33.9-33.9l0-62.1-128 0c-17.7 0-32-14.3-32-32l0-64c0-17.7 14.3-32 32-32l128 0 0-62.1c0-18.7 15.2-33.9 33.9-33.9c9 0 17.6 3.6 24 9.9zM160 96L96 96c-17.7 0-32 14.3-32 32l0 256c0 17.7 14.3 32 32 32l64 0c17.7 0 32 14.3 32 32s-14.3 32-32 32l-64 0c-53 0-96-43-96-96L0 128C0 75 43 32 96 32l64 0c17.7 0 32 14.3 32 32s-14.3 32-32 32z"/>
+					</svg>
+					Logout
+				</a>
 			</div>
 		</div>
 	</div>
