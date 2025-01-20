@@ -12,7 +12,9 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/go-playground/validator"
+	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	tValidatorClient "github.com/twilio/twilio-go/client"
@@ -39,6 +41,42 @@ func (cv *CustomValidator) Validate(i interface{}) error {
 		return err
 	}
 	return nil
+}
+
+var upgrader = websocket.Upgrader{}
+
+func liveReloadHandler(c echo.Context) error {
+	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return err
+	}
+	defer watcher.Close()
+
+	// Watch the directory containing your views
+	err = watcher.Add("go/views")
+	if err != nil {
+		return err
+	}
+
+	for {
+		select {
+		case event := <-watcher.Events:
+			if event.Op&fsnotify.Write == fsnotify.Write {
+				err = conn.WriteMessage(websocket.TextMessage, []byte("reload"))
+				if err != nil {
+					return err
+				}
+			}
+		case err := <-watcher.Errors:
+			return err
+		}
+	}
 }
 
 func initWebserver() {
@@ -71,12 +109,14 @@ func initWebserver() {
 	e.POST("/readMessageHistory", readMessagesByPhoneNumberHandler, isLoggedIn)
 	e.POST("/signin", signinHandler)
 	e.GET("/logout", logoutHandler, isLoggedIn)
+	e.GET("/settings", settingsHandler, isLoggedIn)
 	e.POST("/sms", smsHandler)
 	e.POST("/voice", voiceHandler)
 	e.POST("/welcome", welcomeHandler)
 	e.POST("/hold", holdHandler)
 	e.POST("/connectAgent", connectAgentHandler)
 	e.GET("/holdMusic", holdMusicHandler)
+	e.GET("/livereload", liveReloadHandler)
 }
 
 type ErrorResponse struct {
@@ -502,6 +542,62 @@ func logoutHandler(c echo.Context) error {
 	c.SetCookie(cookie)
 
 	return c.Redirect(http.StatusFound, "/")
+}
+
+func settingsHandler(c echo.Context) error {
+	cookie, err := c.Cookie("username")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Bad Cookie",
+		})
+	}
+
+	agent, err := readAgentByName(cookie.Value)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Bad Username",
+		})
+	}
+
+	allAgentData, err := readAgents()
+	if err != nil {
+		logger.Error("Failed to read agents", zap.Error(err))
+	}
+
+	type outputAgent struct {
+		ID       int
+		Username string
+		Number   string
+		Email    string
+		IsAdmin  bool
+	}
+
+	agents := []outputAgent{}
+	for _, agent := range allAgentData {
+		agents = append(agents, outputAgent{
+			ID:       agent.ID,
+			Username: agent.Username,
+			Number:   agent.Number,
+			Email:    agent.Email,
+			IsAdmin:  agent.IsAdmin,
+		})
+	}
+
+	data := map[string]interface{}{
+		"Username":       agent.Username,
+		"PhoneNumber":    agent.Number,
+		"Email":          agent.Email,
+		"IsAdmin":        agent.IsAdmin,
+		"Agents":         agents,
+		"MissedCalls":    1,
+		"UnreadMessages": 2,
+	}
+
+	logger.Info("Settings", zap.Any("data", data))
+
+	return c.Render(http.StatusOK, "settings.html", data)
 }
 
 func smsLogHandler(c echo.Context) error {
