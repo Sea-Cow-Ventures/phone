@@ -14,7 +14,6 @@ import (
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/go-playground/validator"
-	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	tValidatorClient "github.com/twilio/twilio-go/client"
@@ -43,43 +42,14 @@ func (cv *CustomValidator) Validate(i interface{}) error {
 	return nil
 }
 
-var upgrader = websocket.Upgrader{}
-
-func liveReloadHandler(c echo.Context) error {
-	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		return err
-	}
-	defer watcher.Close()
-
-	// Watch the directory containing your views
-	err = watcher.Add("go/views")
-	if err != nil {
-		return err
-	}
-
-	for {
-		select {
-		case event := <-watcher.Events:
-			if event.Op&fsnotify.Write == fsnotify.Write {
-				err = conn.WriteMessage(websocket.TextMessage, []byte("reload"))
-				if err != nil {
-					return err
-				}
-			}
-		case err := <-watcher.Errors:
-			return err
-		}
-	}
-}
-
 func initWebserver() {
+	e = echo.New()
+
+	// Initial template loading
+	loadTemplates()
+
+	go startLiveReloadWatcher()
+
 	e.HideBanner = true
 	e.HidePort = true
 
@@ -93,11 +63,11 @@ func initWebserver() {
 	e.Validator = &CustomValidator{validator: validator.New()}
 
 	// Register the template renderer with the toJsonm function
-	e.Renderer = &Template{
-		templates: template.Must(template.New("").Funcs(template.FuncMap{
-			"toJSON": toJSON,
-		}).ParseGlob("views/*.html")),
-	}
+	//e.Renderer = &Template{
+	//	templates: template.Must(template.New("").Funcs(template.FuncMap{
+	//		"toJSON": toJSON,
+	//	}).ParseGlob("views/*.html")),
+	//}
 
 	// Define routes
 	e.Static("/", "views")
@@ -116,7 +86,6 @@ func initWebserver() {
 	e.POST("/hold", holdHandler)
 	e.POST("/connectAgent", connectAgentHandler)
 	e.GET("/holdMusic", holdMusicHandler)
-	e.GET("/livereload", liveReloadHandler)
 }
 
 type ErrorResponse struct {
@@ -720,4 +689,43 @@ func signinHandler(c echo.Context) error {
 		"success": false,
 		"error":   "Unauthorized",
 	})
+}
+
+func loadTemplates() {
+	parsedTemplates, err := template.New("").Funcs(template.FuncMap{
+		"toJSON": toJSON,
+	}).ParseGlob("views/*.html")
+	if err != nil {
+		logger.Fatal("Failed to parse templates", zap.Error(err))
+	}
+
+	e.Renderer = &Template{
+		templates: parsedTemplates,
+	}
+}
+
+func startLiveReloadWatcher() {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		logger.Fatal("Failed to create fsnotify watcher", zap.Error(err))
+	}
+	defer watcher.Close()
+
+	// Watch the directory containing your views
+	err = watcher.Add("views")
+	if err != nil {
+		logger.Fatal("Failed to add fsnotify watcher", zap.Error(err))
+	}
+
+	for {
+		select {
+		case event := <-watcher.Events:
+			if event.Op&fsnotify.Write == fsnotify.Write {
+				logger.Info("Live reload triggered")
+				loadTemplates()
+			}
+		case err := <-watcher.Errors:
+			logger.Error("Error in fsnotify watcher", zap.Error(err))
+		}
+	}
 }

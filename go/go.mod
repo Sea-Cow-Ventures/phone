@@ -3,6 +3,7 @@ module AidanFLaw/phone
 go 1.21.0
 
 require (
+	github.com/fsnotify/fsnotify v1.8.0
 	github.com/go-playground/validator v9.31.0+incompatible
 	github.com/go-sql-driver/mysql v1.7.1
 	github.com/jmoiron/sqlx v1.3.5
