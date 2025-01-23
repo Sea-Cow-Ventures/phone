@@ -69,6 +69,23 @@ func createDefaultAdmin() (*Agent, error) {
 	return &admin, err
 }
 
+func createAgent(username, password, email, number string, isAdmin bool) {
+	hashedPassword, err := hashPassword(password)
+	if err != nil {
+		logger.Error("Failed to hash password", zap.Error(err))
+		return
+	}
+
+	insertAgent(&Agent{
+		Username:       username,
+		HashedPassword: hashedPassword,
+		Email:          email,
+		Number:         number,
+		Priority:       0,
+		IsAdmin:        isAdmin,
+	})
+}
+
 func outboundAgentCall(to string) {
 	params := &twilioApi.CreateCallParams{}
 	params.SetTo(to)

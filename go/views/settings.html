@@ -5,7 +5,55 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Settings</title>
 	<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+	<style>
+		/* Basic styles for the modal */
+		.modal {
+			display: none;
+			position: fixed;
+			z-index: 50;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+			overflow: auto;
+			background-color: rgba(0,0,0,0.5);
+			padding-top: 60px;
+		}
+		.modal-content {
+			background-color: #fff;
+			margin: 5% auto;
+			padding: 20px;
+			border-radius: 8px;
+			width: 90%;
+			max-width: 600px;
+			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+		}
+		.modal-header {
+			font-size: 24px;
+			font-weight: bold;
+			margin-bottom: 10px;
+		}
+		.close {
+			color: #aaa;
+			float: right;
+			font-size: 28px;
+			font-weight: bold;
+			cursor: pointer;
+		}
+		.close:hover,
+		.close:focus {
+			color: #000;
+			text-decoration: none;
+		}
+		.disabled-form {
+			opacity: 0.2;
+			pointer-events: none;
+		}
+		.enabled-form {
+			opacity: 1;
+			pointer-events: auto;
+		}
+	</style>
 	<script>
 		function validateEmail(email) {
 			const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -39,30 +87,41 @@
 <body class="bg-gray-100">
 	{{ template "header.html" . }}
 
+	<!-- Modal Structure -->
+	<div id="errorModal" class="modal">
+		<div class="modal-content">
+			<span class="close" onclick="closeModal()">&times;</span>
+			<div class="modal-header">Error</div>
+			<p id="errorMessage"></p>
+		</div>
+	</div>
+
 	<div class="container mx-auto mt-8 space-y-8">
 		{{ if .IsAdmin }}
 		<div class="p-8 bg-white rounded-md shadow-md">
-			<h3 class="text-2xl font-semibold mb-4">Select User to Edit</h3>
-			<table class="min-w-full bg-white">
+			<h3 class="text-2xl font-semibold mb-4 text-center">Select User to Edit</h3>
+			<table class="min-w-full bg-white text-center">
 				<thead>
 					<tr>
 						<th class="py-2">User ID</th>
 						<th class="py-2">Name</th>
 						<th class="py-2">Email</th>
+						<th class="py-2">Phone</th>
 					</tr>
 				</thead>
 				<tbody id="userGrid" class="divide-y divide-gray-200">
 					{{ range $index, $agent := .Agents }}
-					<tr class="cursor-pointer hover:bg-gray-100" onclick="selectUser(this, '{{ $agent.ID }}', '{{ $agent.Email }}', '{{ $agent.Number }}')">
-						<td class="text-center py-2">{{ $agent.ID }}</td>
-						<td class="text-center py-2">{{ $agent.Username }}</td>
-						<td class="text-center py-2">{{ $agent.Email }}</td>
+					<tr class="cursor-pointer hover:bg-gray-100" onclick="selectUser(this, '{{ $agent.ID }}', '{{ $agent.Username }}', '{{ $agent.Email }}', '{{ $agent.Number }}')">
+						<td class="py-2">{{ $agent.ID }}</td>
+						<td class="py-2">{{ $agent.Username }}</td>
+						<td class="py-2">{{ $agent.Email }}</td>
+						<td class="py-2">{{ $agent.Number }}</td>
 					</tr>
 					{{ end }}
 				</tbody>
 			</table>
-			<div class="mt-4 flex space-x-2">
-				<button onclick="addUser()" class="px-2 py-1 bg-green-500 text-white rounded-md hover:bg-green-600">
+			<div class="mt-4 flex space-x-2 justify-center">
+				<button onclick="showAddUserForm()" class="px-2 py-1 bg-green-500 text-white rounded-md hover:bg-green-600">
 					<i class="fas fa-user-plus"></i> Add
 				</button>
 				<button id="deleteUserButton" onclick="deleteUser()" class="px-2 py-1 bg-red-500 text-white rounded-md hover:bg-red-600" disabled>
@@ -73,31 +132,48 @@
 		{{ end }}
 
 		<div class="p-8 bg-white rounded-md shadow-md">
-			<h3 class="text-2xl font-semibold mb-4">My Settings</h3>
-			<form onsubmit="return validateForm()">
+			<h3 id="formTitle" class="text-2xl font-semibold mb-4 disabled-form">Settings: <span id="formUsername"></span></h3>
+			<form id="userForm" method="post" class="disabled-form" onsubmit="handleFormSubmission(event)">
 				<div class="mb-4">
-					<label for="email" class="block text-sm font-medium text-gray-600">Email Address</label>
-					<input type="email" id="email" name="email" class="mt-1 p-2 w-full border rounded-md" required>
+					<label for="username" class="block text-sm font-medium text-gray-600">Username</label>
+					<input type="text" id="username" name="username" class="mt-1 p-2 w-full border rounded-md" required disabled>
 				</div>
 
 				<div class="mb-4">
-					<label for="phone" class="block text-sm font-medium text-gray-600">Phone Number</label>
+					<label for="email" class="block text-sm font-medium text-gray-600">Email Address</label>
+					<input type="email" id="email" name="email" class="mt-1 p-2 w-full border rounded-md" disabled>
+				</div>
+
+				<div class="mb-4">
+					<label for="number" class="block text-sm font-medium text-gray-600">Phone Number</label>
 					<p class="text-xs text-gray-500 mb-1">Format: +1234567890</p>
-					<input type="tel" id="phone" name="phone" class="mt-1 p-2 w-full border rounded-md" required>
+					<input type="tel" id="number" name="number" class="mt-1 p-2 w-full border rounded-md" disabled>
 				</div>
 
 				<div class="mb-4">
 					<label for="password" class="block text-sm font-medium text-gray-600">New Password</label>
-					<input type="password" id="password" name="password" class="mt-1 p-2 w-full border rounded-md">
+					<input type="password" id="password" name="password" class="mt-1 p-2 w-full border rounded-md" disabled>
 				</div>
 
 				<div class="mb-4">
 					<label for="confirmPassword" class="block text-sm font-medium text-gray-600">Confirm New Password</label>
-					<input type="password" id="confirmPassword" name="confirmPassword" class="mt-1 p-2 w-full border rounded-md">
+					<input type="password" id="confirmPassword" name="confirmPassword" class="mt-1 p-2 w-full border rounded-md" disabled>
 				</div>
 
-				<button type="submit" class="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring focus:border-blue-300">
-					Save Changes
+				{{ if .IsAdmin }}
+				<div id="adminCheckbox" class="mb-4 hidden">
+					<label for="isAdmin" class="block text-sm font-medium text-gray-600">Admin</label>
+					<input type="checkbox" id="isAdmin" name="isAdmin" class="mt-1" disabled>
+				</div>
+				{{ end }}
+
+				<input type="hidden" id="userId" name="userId">
+
+				<button type="button" id="addButton" onclick="submitForm('add')" class="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring focus:border-blue-300" disabled>
+					Add User
+				</button>
+				<button type="button" id="editButton" onclick="submitForm('edit')" class="w-full py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring focus:border-blue-300" disabled style="display: none;">
+					Edit User
 				</button>
 			</form>
 		</div>
@@ -107,7 +183,7 @@
 		let selectedUserId = null;
 		let selectedRow = null;
 
-		function selectUser(row, id, email, phone) {
+		function selectUser(row, id, username, email, phone) {
 			if (selectedRow) {
 				selectedRow.classList.remove('bg-blue-100');
 			}
@@ -115,19 +191,86 @@
 			selectedRow.classList.add('bg-blue-100');
 
 			selectedUserId = id;
+			document.getElementById('username').value = username;
 			document.getElementById('email').value = email;
 			document.getElementById('phone').value = phone;
+			document.getElementById('formUsername').textContent = username;
 			document.getElementById('deleteUserButton').disabled = false;
+
+			document.getElementById('formTitle').textContent = `Settings: ${username}`;
+			document.getElementById('adminCheckbox').classList.add('hidden');
+
+			// Enable form fields and header
+			document.querySelectorAll('#userForm input, #userForm button').forEach(el => el.disabled = false);
+			document.getElementById('userForm').classList.remove('disabled-form');
+			document.getElementById('userForm').classList.add('enabled-form');
+			document.getElementById('formTitle').classList.remove('disabled-form');
+			document.getElementById('formTitle').classList.add('enabled-form');
+
+			document.getElementById('userId').value = id;
+			toggleButtons(true);
 		}
 
-		function addUser() {
-			alert('Add User functionality to be implemented.');
+		function showAddUserForm() {
+			if (selectedRow) {
+				selectedRow.classList.remove('bg-blue-100');
+				selectedRow = null;
+			}
+			selectedUserId = null;
+			document.getElementById('username').value = '';
+			document.getElementById('email').value = '';
+			document.getElementById('number').value = '';
+			document.getElementById('password').value = '';
+			document.getElementById('confirmPassword').value = '';
+			document.getElementById('deleteUserButton').disabled = true;
+
+			document.getElementById('formTitle').textContent = 'Add User';
+			document.getElementById('adminCheckbox').classList.remove('hidden');
+
+			// Enable form fields and header
+			document.querySelectorAll('#userForm input, #userForm button').forEach(el => el.disabled = false);
+			document.getElementById('userForm').classList.remove('disabled-form');
+			document.getElementById('userForm').classList.add('enabled-form');
+			document.getElementById('formTitle').classList.remove('disabled-form');
+			document.getElementById('formTitle').classList.add('enabled-form');
+
+			document.getElementById('userId').value = '';
+			toggleButtons(false);
 		}
 
 		function deleteUser() {
 			if (selectedUserId) {
 				alert(`Delete User functionality for user ID ${selectedUserId} to be implemented.`);
 				// Implement the logic to delete the user
+			}
+		}
+
+		function submitForm(action) {
+			const form = document.getElementById('userForm');
+			const userId = document.getElementById('userId').value;
+
+			if (action === 'add') {
+				form.action = '/addUser';
+			} else if (action === 'edit' && userId) {
+				form.action = '/editUser';
+			} else {
+				alert('Please select a user to edit.');
+				return;
+			}
+
+			handleFormSubmission({ preventDefault: () => {}, target: form });
+		}
+
+		function toggleButtons(isUserSelected) {
+			const addButton = document.getElementById('addButton');
+			const editButton = document.getElementById('editButton');
+
+			if (isUserSelected) {
+				addButton.style.display = 'none';
+				editButton.style.display = 'inline';
+			} else {
+				addButton.style.display = 'inline';
+				editButton.style.display = 'none';
 			}
 		}
 
@@ -142,6 +285,36 @@
 				}
 			});
 		});
+
+		function showErrorModal(message) {
+			document.getElementById('errorMessage').innerText = message;
+			document.getElementById('errorModal').style.display = 'block';
+		}
+
+		function closeModal() {
+			document.getElementById('errorModal').style.display = 'none';
+		}
+
+		function handleFormSubmission(event) {
+			event.preventDefault();
+			const form = event.target;
+
+			fetch(form.action, {
+				method: form.method,
+				body: new FormData(form),
+			})
+			.then(response => response.json())
+			.then(data => {
+				if (!data.success) {
+					showErrorModal(data.error);
+				} else {
+					window.location.href = '/settings';
+				}
+			})
+			.catch(error => {
+				showErrorModal('An unexpected error occurred.');
+			});
+		}
 	</script>
 </body>
 </html>

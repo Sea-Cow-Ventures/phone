@@ -72,10 +72,12 @@ func initWebserver() {
 	// Define routes
 	e.Static("/", "views")
 	e.GET("/", loginHandler)
+	e.GET("/login", loginHandler)
 	e.GET("/home", homeHandler, isLoggedIn)
 	e.GET("/smsLog", smsLogHandler, isLoggedIn)
 	e.GET("/readMessagedPhoneNumbers", readMessagedPhoneNumbersHandler, isLoggedIn)
 	e.POST("/sendMessage", sendMessageHandler, isLoggedIn)
+	e.POST("/addUser", addUserHandler, isLoggedIn)
 	e.POST("/readMessageHistory", readMessagesByPhoneNumberHandler, isLoggedIn)
 	e.POST("/signin", signinHandler)
 	e.GET("/logout", logoutHandler, isLoggedIn)
@@ -208,10 +210,7 @@ func isLoggedIn(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		_, found := readLoginCookie(c)
 		if !found {
-			return c.JSON(http.StatusUnauthorized, map[string]interface{}{
-				"success": false,
-				"error":   "Unauthorized",
-			})
+			return c.Redirect(http.StatusFound, "/login")
 		}
 		return next(c)
 	}
@@ -493,8 +492,17 @@ func homeHandler(c echo.Context) error {
 		})
 	}
 
+	agent, err := readAgentByName(cookie.Value)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Bad Cookie",
+		})
+	}
+
 	data := map[string]interface{}{
 		"Username":       cookie.Value,
+		"IsAdmin":        agent.IsAdmin,
 		"MissedCalls":    1,
 		"UnreadMessages": 2,
 	}
@@ -641,6 +649,43 @@ func sendMessageHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"success": true,
 	})
+}
+
+func addUserHandler(c echo.Context) error {
+	type addUserInput struct {
+		Username string `json:"username" validate:"required"`
+		Password string `json:"password" validate:"required"`
+		Email    string `json:"email" validate:"required,email"`
+		Number   string `json:"number" validate:"required,e164"`
+		IsAdmin  string `json:"isAdmin"`
+	}
+
+	input := new(addUserInput)
+	if err := c.Bind(input); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Invalid input format",
+		})
+	}
+
+	if err := c.Validate(input); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Validation failed: " + err.Error(),
+		})
+	}
+
+	agent, err := readAgentByName(input.Username)
+	if agent != nil || err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Username already exists",
+		})
+	}
+
+	createAgent(input.Username, input.Password, input.Email, input.Number, input.IsAdmin == "true")
+
+	return c.Redirect(http.StatusFound, "/settings")
 }
 
 func loginHandler(c echo.Context) error {
