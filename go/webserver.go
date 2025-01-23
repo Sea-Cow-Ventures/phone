@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -62,26 +61,21 @@ func initWebserver() {
 	e.Use(middleware.BodyLimit("2M"))
 	e.Validator = &CustomValidator{validator: validator.New()}
 
-	// Register the template renderer with the toJsonm function
-	//e.Renderer = &Template{
-	//	templates: template.Must(template.New("").Funcs(template.FuncMap{
-	//		"toJSON": toJSON,
-	//	}).ParseGlob("views/*.html")),
-	//}
-
 	// Define routes
 	e.Static("/", "views")
 	e.GET("/", loginHandler)
 	e.GET("/login", loginHandler)
-	e.GET("/home", homeHandler, isLoggedIn)
-	e.GET("/smsLog", smsLogHandler, isLoggedIn)
-	e.GET("/readMessagedPhoneNumbers", readMessagedPhoneNumbersHandler, isLoggedIn)
-	e.POST("/sendMessage", sendMessageHandler, isLoggedIn)
-	e.POST("/addUser", addUserHandler, isLoggedIn)
-	e.POST("/readMessageHistory", readMessagesByPhoneNumberHandler, isLoggedIn)
+	e.GET("/home", homeHandler, isLoggedInHandler)
+	e.GET("/smsLog", smsLogHandler, isLoggedInHandler)
+	e.GET("/readMessagedPhoneNumbers", readMessagedPhoneNumbersHandler, isLoggedInHandler)
+	e.POST("/sendMessage", sendMessageHandler, isLoggedInHandler)
+	e.POST("/addUser", addUserHandler, isLoggedInHandler, isAdminHandler)
+	e.POST("/removeUser", removeUserHandler, isLoggedInHandler, isAdminHandler)
+	e.POST("/editUser", editUserHandler, isLoggedInHandler, isAdminHandler)
+	e.POST("/readMessageHistory", readMessagesByPhoneNumberHandler, isLoggedInHandler)
 	e.POST("/signin", signinHandler)
-	e.GET("/logout", logoutHandler, isLoggedIn)
-	e.GET("/settings", settingsHandler, isLoggedIn)
+	e.GET("/logout", logoutHandler, isLoggedInHandler)
+	e.GET("/settings", settingsHandler, isLoggedInHandler, isAdminHandler)
 	e.POST("/sms", smsHandler)
 	e.POST("/voice", voiceHandler)
 	e.POST("/welcome", welcomeHandler)
@@ -206,11 +200,22 @@ func recoverMiddleware() echo.MiddlewareFunc {
 	}
 }
 
-func isLoggedIn(next echo.HandlerFunc) echo.HandlerFunc {
+func isLoggedInHandler(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		_, found := readLoginCookie(c)
 		if !found {
 			return c.Redirect(http.StatusFound, "/login")
+		}
+		return next(c)
+	}
+}
+
+func isAdminHandler(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		username, _ := readLoginCookie(c)
+		userIsAdmin, err := isAdmin(username)
+		if !userIsAdmin || err != nil {
+			return c.Redirect(http.StatusFound, "/home")
 		}
 		return next(c)
 	}
@@ -458,7 +463,7 @@ func connectAgentHandler(c echo.Context) error {
 	// Capture and print POST data
 	fmt.Println("POST Data:")
 	if c.Request().Method == http.MethodPost {
-		body, err := ioutil.ReadAll(c.Request().Body)
+		body, err := io.ReadAll(c.Request().Body)
 		if err != nil {
 			fmt.Println("Error reading request body:", err)
 		} else {
@@ -676,7 +681,7 @@ func addUserHandler(c echo.Context) error {
 	}
 
 	agent, err := readAgentByName(input.Username)
-	if agent != nil || err != nil {
+	if agent != nil || err.Error() != "sql: no rows in result set" {
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{
 			"success": false,
 			"error":   "Username already exists",
@@ -685,7 +690,68 @@ func addUserHandler(c echo.Context) error {
 
 	createAgent(input.Username, input.Password, input.Email, input.Number, input.IsAdmin == "true")
 
-	return c.Redirect(http.StatusFound, "/settings")
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"success": true,
+	})
+}
+
+func editUserHandler(c echo.Context) error {
+	type addUserInput struct {
+		UserID   string `json:"userId" validate:"required"`
+		Username string `json:"username" validate:"required"`
+		Password string `json:"password" validate:"required"`
+		Email    string `json:"email" validate:"required,email"`
+		Number   string `json:"number" validate:"required,e164"`
+		IsAdmin  string `json:"isAdmin"`
+	}
+
+	input := new(addUserInput)
+	if err := c.Bind(input); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Invalid input format",
+		})
+	}
+
+	hashedPassword, err := hashPassword(input.Password)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"error":   "Failed to hash password",
+		})
+	}
+
+	editAgent(input.UserID, input.Username, hashedPassword, input.Email, input.Number, input.IsAdmin == "true")
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"success": true,
+	})
+}
+
+func removeUserHandler(c echo.Context) error {
+	var data struct {
+		ID string `json:"id" validate:"required,numeric"`
+	}
+
+	if err := c.Bind(&data); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Invalid input format",
+		})
+	}
+
+	isLast, err := isLastAdmin(data.ID)
+	if isLast || err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"error":   "Cannot delete last admin user",
+		})
+	}
+
+	removeAgent(data.ID)
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"success": true,
+	})
 }
 
 func loginHandler(c echo.Context) error {

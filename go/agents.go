@@ -86,6 +86,33 @@ func createAgent(username, password, email, number string, isAdmin bool) {
 	})
 }
 
+func removeAgent(id string) {
+	db.Exec("DELETE FROM agents WHERE id = ?", id)
+}
+
+func editAgent(id, username, hashedPassword, email, number string, isAdmin bool) {
+	db.Exec("UPDATE agents SET name = ?, hashedPassword = ?, email = ?, number = ?, isAdmin = ? WHERE id = ?",
+		username, hashedPassword, email, number, isAdmin, id)
+}
+
+func isAdmin(username string) (bool, error) {
+	var isAdmin bool
+	err := db.Get(&isAdmin, "SELECT isAdmin FROM agents WHERE name = ?", username)
+	if err != nil {
+		return false, err
+	}
+	return isAdmin, nil
+}
+
+func isLastAdmin(userID string) (bool, error) {
+	var count int
+	err := db.Get(&count, "SELECT COUNT(*) FROM agents WHERE isAdmin = 1 AND id != ?", userID)
+	if err != nil {
+		return false, err
+	}
+	return count == 0, nil
+}
+
 func outboundAgentCall(to string) {
 	params := &twilioApi.CreateCallParams{}
 	params.SetTo(to)

@@ -82,6 +82,22 @@
 
 			return valid;
 		}
+
+		function validatePasswords() {
+			const password = document.getElementById('password').value;
+			const confirmPassword = document.getElementById('confirmPassword').value;
+			const errorMessage = document.getElementById('passwordError');
+
+			if (password !== confirmPassword) {
+				errorMessage.textContent = "Passwords do not match.";
+				errorMessage.classList.remove('hidden'); // Show error message
+				return false; // Indicate validation failure
+			} else {
+				errorMessage.textContent = ""; // Clear error message
+				errorMessage.classList.add('hidden'); // Hide error message
+				return true; // Indicate validation success
+			}
+		}
 	</script>
 </head>
 <body class="bg-gray-100">
@@ -107,15 +123,19 @@
 						<th class="py-2">Name</th>
 						<th class="py-2">Email</th>
 						<th class="py-2">Phone</th>
+						<th class="py-2">Admin</th>
 					</tr>
 				</thead>
 				<tbody id="userGrid" class="divide-y divide-gray-200">
 					{{ range $index, $agent := .Agents }}
-					<tr class="cursor-pointer hover:bg-gray-100" onclick="selectUser(this, '{{ $agent.ID }}', '{{ $agent.Username }}', '{{ $agent.Email }}', '{{ $agent.Number }}')">
+					<tr class="cursor-pointer hover:bg-gray-100" onclick="selectUser(this, '{{ $agent.ID }}', '{{ $agent.Username }}', '{{ $agent.Email }}', '{{ $agent.Number }}', {{ $agent.IsAdmin }})">
 						<td class="py-2">{{ $agent.ID }}</td>
 						<td class="py-2">{{ $agent.Username }}</td>
 						<td class="py-2">{{ $agent.Email }}</td>
 						<td class="py-2">{{ $agent.Number }}</td>
+						<td class="py-2">
+							<input type="checkbox" class="admin-checkbox" {{ if $agent.IsAdmin }}checked{{ end }} disabled>
+						</td>
 					</tr>
 					{{ end }}
 				</tbody>
@@ -147,7 +167,7 @@
 				<div class="mb-4">
 					<label for="number" class="block text-sm font-medium text-gray-600">Phone Number</label>
 					<p class="text-xs text-gray-500 mb-1">Format: +1234567890</p>
-					<input type="tel" id="number" name="number" class="mt-1 p-2 w-full border rounded-md" disabled>
+					<input type="tel" id="number" name="number" class="mt-1 p-2 w-full border rounded-md" pattern="^\+?[0-9]*$" title="Please enter a valid phone number starting with an optional + followed by numbers." disabled>
 				</div>
 
 				<div class="mb-4">
@@ -160,12 +180,13 @@
 					<input type="password" id="confirmPassword" name="confirmPassword" class="mt-1 p-2 w-full border rounded-md" disabled>
 				</div>
 
-				{{ if .IsAdmin }}
-				<div id="adminCheckbox" class="mb-4 hidden">
+				<!-- Error message for password mismatch -->
+				<p id="passwordError" class="text-red-500 hidden"></p>
+
+				<div class="mb-4">
 					<label for="isAdmin" class="block text-sm font-medium text-gray-600">Admin</label>
 					<input type="checkbox" id="isAdmin" name="isAdmin" class="mt-1" disabled>
 				</div>
-				{{ end }}
 
 				<input type="hidden" id="userId" name="userId">
 
@@ -183,7 +204,7 @@
 		let selectedUserId = null;
 		let selectedRow = null;
 
-		function selectUser(row, id, username, email, phone) {
+		function selectUser(row, id, username, email, number, isAdmin) {
 			if (selectedRow) {
 				selectedRow.classList.remove('bg-blue-100');
 			}
@@ -193,12 +214,10 @@
 			selectedUserId = id;
 			document.getElementById('username').value = username;
 			document.getElementById('email').value = email;
-			document.getElementById('phone').value = phone;
-			document.getElementById('formUsername').textContent = username;
+			document.getElementById('number').value = number;
 			document.getElementById('deleteUserButton').disabled = false;
-
+			document.getElementById('isAdmin').checked = isAdmin;
 			document.getElementById('formTitle').textContent = `Settings: ${username}`;
-			document.getElementById('adminCheckbox').classList.add('hidden');
 
 			// Enable form fields and header
 			document.querySelectorAll('#userForm input, #userForm button').forEach(el => el.disabled = false);
@@ -240,8 +259,30 @@
 
 		function deleteUser() {
 			if (selectedUserId) {
-				alert(`Delete User functionality for user ID ${selectedUserId} to be implemented.`);
-				// Implement the logic to delete the user
+				// Confirmation prompt
+				const isConfirmed = confirm("Are you sure you want to delete this user?");
+				if (!isConfirmed) {
+					return; 
+				}
+
+				fetch('/removeUser', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ id: selectedUserId })
+				})
+				.then(response => response.json())
+				.then(data => {
+					if (!data.success) {
+						showErrorModal(data.error);
+					} else {
+						window.location.href = '/settings';
+					}
+				})
+				.catch(error => {
+					showErrorModal('An unexpected error occurred.');
+				});
 			}
 		}
 
@@ -297,11 +338,26 @@
 
 		function handleFormSubmission(event) {
 			event.preventDefault();
+			
+			// Validate passwords
+			if (!validatePasswords()) {
+				return; // Stop submission if passwords do not match
+			}
+
 			const form = event.target;
+			const formData = new FormData(form);
+			const jsonData = {};
+
+			formData.forEach((value, key) => {
+				jsonData[key] = value;
+			});
 
 			fetch(form.action, {
-				method: form.method,
-				body: new FormData(form),
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(jsonData),
 			})
 			.then(response => response.json())
 			.then(data => {
