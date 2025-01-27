@@ -1,7 +1,7 @@
 when:
   - event: push
     branch: main
-    
+
 steps:
   - name: build-go
     image: golang:latest
@@ -18,3 +18,4 @@ steps:
       - /var/run/docker.sock:/var/run/docker.sock
     commands:
       - docker build -t seacow-phone:local .
+      - docker image prune -f --filter "dangling=true"
