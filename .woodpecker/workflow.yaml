@@ -5,10 +5,8 @@ steps:
       GOOS: linux
       GOARCH: amd64
     commands:
-      - cd go
       - go mod tidy
-      - mkdir -p build
-      - go build -o ./build/seacow-phone ./cmd/seacow-phone
+      - go build -o seacow-phone
     when:
       - branch: [main]
 
