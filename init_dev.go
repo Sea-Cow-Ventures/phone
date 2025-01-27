@@ -12,6 +12,10 @@ import (
 	ngrokConfig "golang.ngrok.com/ngrok/config"
 )
 
+func initServer() {
+	go startWebserverInNgrokTunnel()
+}
+
 func startWebserverInNgrokTunnel() {
 	tun, err := ngrok.Listen(context.Background(),
 		ngrokConfig.HTTPEndpoint(

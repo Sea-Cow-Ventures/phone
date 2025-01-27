@@ -78,11 +78,7 @@ func init() {
 
 	e = echo.New()
 
-	if cnf.Env == "dev" {
-		go startWebserverInNgrokTunnel()
-	} else {
-		//startWebserver()
-	}
+	initServer()
 
 	initWebserver()
 
