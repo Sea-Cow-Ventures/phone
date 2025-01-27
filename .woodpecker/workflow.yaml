@@ -1,3 +1,7 @@
+when:
+  event: [push, pull_request]
+  branch: [main]
+
 steps:
   - name: build
     image: golang:latest
@@ -7,8 +11,6 @@ steps:
     commands:
       - go mod tidy
       - go build -o seacow-phone
-    when:
-      - branch: [main]
 
   - name: docker
     image: docker:24.0.5
@@ -16,5 +18,3 @@ steps:
       - /var/run/docker.sock:/var/run/docker.sock
     commands:
       - docker build -t seacow-phone:local .
-    when:
-      - branch: [main]
