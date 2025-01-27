@@ -1,9 +1,9 @@
 when:
-  event: [push, pull_request]
-  branch: [main]
-
+  - event: push
+    branch: main
+    
 steps:
-  - name: build
+  - name: build-go
     image: golang:latest
     environment:
       GOOS: linux
@@ -12,7 +12,7 @@ steps:
       - go mod tidy
       - go build -o seacow-phone
 
-  - name: docker
+  - name: build-docker
     image: docker:24.0.5
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
