@@ -66,6 +66,8 @@ func initWebserver() {
 	e.GET("/", loginHandler)
 	e.GET("/login", loginHandler)
 	e.GET("/home", homeHandler, isLoggedInHandler)
+	e.GET("/calls", homeHandler, isLoggedInHandler)
+	e.POST("/readCalls", readCallsHandler, isLoggedInHandler)
 	e.GET("/smsLog", smsLogHandler, isLoggedInHandler)
 	e.GET("/readMessagedPhoneNumbers", readMessagedPhoneNumbersHandler, isLoggedInHandler)
 	e.POST("/sendMessage", sendMessageHandler, isLoggedInHandler)
@@ -452,6 +454,42 @@ func holdHandler(c echo.Context) error {
 	}
 
 	return nil
+}
+
+func readCallsHandler(c echo.Context) error {
+	type readCallsInput struct {
+		Page  int `json:"page" validate:"required"`
+		Limit int `json:"limit" validate:"required"`
+	}
+
+	input := new(readCallsInput)
+	if err := c.Bind(input); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Invalid input format",
+		})
+	}
+
+	if err := c.Validate(input); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Validation failed: " + err.Error(),
+		})
+	}
+
+	calls, err := readCalls(input.Page, input.Limit)
+	if err != nil {
+		logger.Error("Failed to read calls", zap.Error(err))
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"success": false,
+			"error":   "Failed to read calls",
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"success": true,
+		"data":    calls,
+	})
 }
 
 func connectAgentHandler(c echo.Context) error {

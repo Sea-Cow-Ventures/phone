@@ -31,21 +31,41 @@
 
 	{{ template "header.html" . }}
 
-	<div id="dialerContainer" class="container mx-auto mt-8 bg-gray-100 h-screen flex items-center justify-center">
-		<div class="max-w-md w-full p-8 bg-white rounded-md shadow-md">
+	<div class="container mx-auto mt-8 flex flex-col md:flex-row">
+		<div class="call-history w-full md:w-1/2 p-4">
+			<h2 class="text-2xl font-semibold mb-4">Call History</h2>
+			<table class="min-w-full bg-white rounded-md shadow-md" id="callHistoryTable">
+				<thead>
+					<tr>
+						<th class="py-2 text-center">Date</th>
+						<th class="py-2 text-center">Direction</th>
+						<th class="py-2 text-center">Number</th>
+						<th class="py-2 text-center">Caller Name</th>
+					</tr>
+				</thead>
+				<tbody>
+					<!-- Call data will be populated here -->
+				</tbody>
+			</table>
+			<div class="flex justify-between mt-4">
+				<button id="prevPage" class="bg-blue-500 text-white px-4 py-2 rounded-md" disabled>Previous</button>
+				<button id="nextPage" class="bg-blue-500 text-white px-4 py-2 rounded-md">Next</button>
+			</div>
+		</div>
+
+		<div class="dialer w-auto md:w-1/4 p-4 flex flex-col items-center justify-center bg-white rounded-md shadow-md ml-auto">
 			<h2 class="text-2xl font-semibold mb-6">Phone Dialer</h2>
-	
-			<div class="mb-4">
+			<div class="mb-4 w-full">
 				<label for="phoneNumber" class="block text-sm font-medium text-gray-600">Enter Phone Number</label>
 				<input type="text" id="phoneNumber" name="phoneNumber" class="mt-1 p-2 w-full border rounded-md">
 			</div>
-	
+
 			<style>
 				.dtmf-button {
 					height: 3.5rem;
 				}
 			</style>
-	
+
 			<script>
 				document.addEventListener('DOMContentLoaded', function () {
 					const notificationModal = document.getElementById('notificationModal');
@@ -237,8 +257,82 @@
 						}
 					});
 				});
+
+				let currentPage = 1;
+				const callsPerPage = 10;
+
+				function fetchCallData(page) {
+					const requestData = {
+						page: page,
+						limit: callsPerPage
+					};
+
+					fetch('/readCalls', {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify(requestData)
+					})
+					.then(response => {
+						if (!response.ok) {
+							throw new Error('Network response was not ok');
+						}
+						return response.json();
+					})
+					.then(data => {
+						if (data.success) {
+							const callHistoryTableBody = document.getElementById('callHistoryTable').querySelector('tbody');
+							callHistoryTableBody.innerHTML = '';
+
+							data.data.forEach(call => {
+								const date = new Date(call.CreatedDate);
+								const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
+								const iconSrc = call.Direction === 'inbound' ? 'inbound.svg' : 'outbound.svg';
+
+								const displayNumber = call.Direction === 'inbound' ? call.From : call.To;
+
+								const row = document.createElement('tr');
+								row.innerHTML = `
+									<td class="border px-4 py-2 text-center">${formattedDate}</td>
+									<td class="border px-4 py-2 text-center flex items-center justify-center">
+										<img src="${iconSrc}" alt="Call direction" width="24" height="24" />
+									</td>
+									<td class="border px-4 py-2 text-center">${displayNumber}</td>
+									<td class="border px-4 py-2 text-center">${call.CallerName}</td>
+								`;
+								callHistoryTableBody.appendChild(row);
+							});
+
+							document.getElementById('prevPage').disabled = currentPage === 1;
+							document.getElementById('nextPage').disabled = data.data.length < callsPerPage;
+						} else {
+							console.error('Failed to fetch call data:', data);
+						}
+					})
+					.catch(error => {
+						console.error('Error fetching call data:', error);
+					});
+				}
+
+				document.addEventListener('DOMContentLoaded', () => {
+					fetchCallData(currentPage);
+
+					document.getElementById('prevPage').addEventListener('click', () => {
+						if (currentPage > 1) {
+							currentPage--;
+							fetchCallData(currentPage);
+						}
+					});
+
+					document.getElementById('nextPage').addEventListener('click', () => {
+						currentPage++;
+						fetchCallData(currentPage);
+					});
+				});
 			</script>
-	
+
 			<div class="grid grid-cols-3 gap-4 mb-4">
 				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
 					<span class="block">1</span>
@@ -285,12 +379,12 @@
 					<span class="block">#</span>
 				</button>
 			</div>
-	
+
 			<button id="actionButton"
 				class="w-full py-2 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring focus:border-green-300">
 				Dial
 			</button>
 		</div>
-
+	</div>
 </body>
 </html>
