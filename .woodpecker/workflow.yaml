@@ -7,6 +7,7 @@ steps:
     commands:
       - cd go
       - go mod tidy
+      - mkdir -p build
       - go build -o ./build/seacow-phone ./cmd/seacow-phone
     when:
       - branch: [main]
