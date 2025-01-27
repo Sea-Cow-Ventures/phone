@@ -1,0 +1,22 @@
+pipeline:
+  build:
+    image: golang:latest
+    pull: true
+    environment:
+      - GOOS=linux
+      - GOARCH=amd64
+    commands:
+      - go mod tidy
+      - go build -o ./build/seacow-phone ./cmd/seacow-phone
+
+  docker:
+    image: docker:24.0.5
+    pull: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    commands:
+      - docker build -t seacow-phone:local .
+
+volumes:
+  docker:
+    driver: local
