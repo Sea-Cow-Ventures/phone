@@ -1,7 +1,8 @@
 *.crt
 *.csr
 *.key
-*.json
+config.json
+sms.json
 __debug*
 *.srl
 *.log
