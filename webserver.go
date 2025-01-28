@@ -620,6 +620,9 @@ func settingsHandler(c echo.Context) error {
 	return c.Render(http.StatusOK, "settings.html", data)
 }
 
+//func notificationsHandler(c echo.Context) error {
+//}
+
 func smsLogHandler(c echo.Context) error {
 	phoneNumbers, err := readMessagedPhoneNumbers()
 	if err != nil {

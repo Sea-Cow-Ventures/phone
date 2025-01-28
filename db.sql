@@ -49,6 +49,14 @@ CREATE TABLE calls
         UNIQUE (callSid DESC)
 );
 
+CREATE TABLE handledCalls
+(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    callId INT NOT NULL,
+    agentId INT NOT NULL,
+    CONSTRAINT handledCallId UNIQUE (callId DESC)
+);
+
 CREATE TABLE sms
 (
     id            INT AUTO_INCREMENT

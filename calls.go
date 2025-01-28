@@ -9,7 +9,13 @@ type Call struct {
 	CallerName  string `db:"callerName"`
 }
 
-func readCalls(page int, limit int) ([]Call, error) {
+type CallResponse struct {
+	Calls       []Call `json:"calls"`
+	TotalPages  int    `json:"totalPages"`
+	CurrentPage int    `json:"currentPage"`
+}
+
+func readCalls(page int, limit int) (CallResponse, error) {
 	if page <= 0 {
 		page = 1
 	}
@@ -19,6 +25,20 @@ func readCalls(page int, limit int) ([]Call, error) {
 
 	offset := (page - 1) * limit
 	calls := []Call{}
+
+	var totalCalls int
+	countQuery := `
+		SELECT COUNT(*) 
+		FROM calls c
+		LEFT JOIN agents a ON c.toNumber = a.number 
+		WHERE NOT (c.direction = 'outbound-dial' AND a.number IS NOT NULL)`
+
+	err := db.QueryRow(countQuery).Scan(&totalCalls)
+	if err != nil {
+		return CallResponse{}, err
+	}
+
+	totalPages := (totalCalls + limit - 1) / limit
 
 	query := `
 		SELECT c.id, c.fromNumber, c.toNumber, c.direction, c.createdDate, COALESCE(c.callerName, '') AS callerName
@@ -30,7 +50,7 @@ func readCalls(page int, limit int) ([]Call, error) {
 
 	rows, err := db.Queryx(query, limit, offset)
 	if err != nil {
-		return nil, err
+		return CallResponse{}, err
 	}
 	defer rows.Close()
 
@@ -38,10 +58,14 @@ func readCalls(page int, limit int) ([]Call, error) {
 		var call Call
 		err := rows.StructScan(&call)
 		if err != nil {
-			return nil, err
+			return CallResponse{}, err
 		}
 		calls = append(calls, call)
 	}
 
-	return calls, nil
+	return CallResponse{
+		Calls:       calls,
+		TotalPages:  totalPages,
+		CurrentPage: page,
+	}, nil
 }
