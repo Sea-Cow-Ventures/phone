@@ -116,24 +116,24 @@
 		{{ if .IsAdmin }}
 		<div class="p-8 bg-white rounded-md shadow-md">
 			<h3 class="text-2xl font-semibold mb-4 text-center">Select User to Edit</h3>
-			<table class="min-w-full bg-white text-center">
-				<thead>
+			<table class="min-w-full bg-white rounded-md border border-gray-300" id="userTable">
+				<thead class="bg-gray-100">
 					<tr>
-						<th class="py-2">User ID</th>
-						<th class="py-2">Name</th>
-						<th class="py-2">Email</th>
-						<th class="py-2">Phone</th>
-						<th class="py-2">Admin</th>
+						<th class="py-2 text-center w-1/5 border border-gray-300">User ID</th>
+						<th class="py-2 text-center w-1/5 border border-gray-300">Name</th>
+						<th class="py-2 text-center w-1/5 border border-gray-300">Email</th>
+						<th class="py-2 text-center w-1/5 border border-gray-300">Phone</th>
+						<th class="py-2 text-center w-1/5 border border-gray-300">Admin</th>
 					</tr>
 				</thead>
-				<tbody id="userGrid" class="divide-y divide-gray-200">
+				<tbody id="userGrid" class="divide-y divide-gray-300">
 					{{ range $index, $agent := .Agents }}
 					<tr class="cursor-pointer hover:bg-gray-100" onclick="selectUser(this, '{{ $agent.ID }}', '{{ $agent.Username }}', '{{ $agent.Email }}', '{{ $agent.Number }}', {{ $agent.IsAdmin }})">
-						<td class="py-2">{{ $agent.ID }}</td>
-						<td class="py-2">{{ $agent.Username }}</td>
-						<td class="py-2">{{ $agent.Email }}</td>
-						<td class="py-2">{{ $agent.Number }}</td>
-						<td class="py-2">
+						<td class="py-2 text-center border border-gray-300">{{ $agent.ID }}</td>
+						<td class="py-2 text-center border border-gray-300">{{ $agent.Username }}</td>
+						<td class="py-2 text-center border border-gray-300">{{ $agent.Email }}</td>
+						<td class="py-2 text-center border border-gray-300">{{ $agent.Number }}</td>
+						<td class="py-2 text-center border border-gray-300">
 							<input type="checkbox" class="admin-checkbox" {{ if $agent.IsAdmin }}checked{{ end }} disabled>
 						</td>
 					</tr>

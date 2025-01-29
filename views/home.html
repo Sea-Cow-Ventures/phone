@@ -41,27 +41,28 @@
 			<h2 class="text-2xl font-semibold mb-4"><i class="fas fa-history mr-2"></i>Call History</h2>
 			<div class="flex justify-between items-center mb-4">
 				<div class="flex items-center space-x-2">
-					<button id="prevPage" class="bg-blue-500 text-white px-4 py-2 rounded-md" disabled>
+					<button id="prevPage" class="bg-blue-500 text-white px-4 py-2 rounded-md disabled:bg-blue-500" disabled>
 						<i class="fas fa-arrow-left mr-2"></i>Previous
 					</button>
-					<button id="nextPage" class="bg-blue-500 text-white px-4 py-2 rounded-md">
+					<button id="nextPage" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
 						<i class="fas fa-arrow-right mr-2"></i>Next
 					</button>
-					<button id="callBackButton" class="bg-green-500 text-white px-4 py-2 rounded-md" disabled>
-						<i class="fas fa-reply mr-2"></i>Call Back
+					<button id="callBackButton" class="bg-green-500 text-white px-4 py-2 rounded-md disabled:bg-green-500" disabled>
+						<img src="call-return.svg" class="inline-block w-5 h-5 mr-2" style="filter: invert(1) brightness(2) contrast(2);">Call Back
 					</button>
-					<button id="openDialerButton" class="bg-blue-500 text-white px-4 py-2 rounded-md">
+					<button id="openDialerButton" style="background-color: #EFBC9B;" class="text-white px-4 py-2 rounded-md hover:bg-blue-600">
 						<i class="fas fa-phone-square mr-2"></i>Dialer
 					</button>
 				</div>
 			</div>
-			<table class="min-w-full bg-white rounded-md shadow-md" id="callHistoryTable">
-				<thead>
+			<table class="min-w-full bg-white rounded-md border border-gray-300 shadow-md" id="callHistoryTable">
+				<thead style="background-color: #F5D7B8;">
 					<tr>
-						<th class="py-2 text-center w-1/3">Date</th>
-						<th class="py-2 text-center w-1/6">Direction</th>
-						<th class="py-2 text-center w-1/4">Number</th>
-						<th class="py-2 text-center w-1/3">Caller Name</th>
+						<th class="py-2 text-center w-1/5 border border-gray-300">Date</th>
+						<th class="py-2 text-center w-1/6 border border-gray-300">Direction</th>
+						<th class="py-2 text-center w-1/5 border border-gray-300">Number</th>
+						<th class="py-2 text-center w-1/5 border border-gray-300">Caller Name</th>
+						<th class="py-2 text-center w-1/5 border border-gray-300">Answered By</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -346,11 +347,14 @@
 						const row = document.createElement('tr');
 						row.innerHTML = `
 							<td class="border px-4 py-2 text-center">${formattedDate}</td>
-							<td class="border px-4 py-2 text-center flex items-center justify-center">
-    							<img src="${iconSrc}" alt="Call direction" class="w-6 h-6 " style="filter: ${call.Direction === 'inbound' ? 'invert(18%) sepia(98%) saturate(7075%) hue-rotate(356deg) brightness(98%) contrast(113%)' : 'invert(56%) sepia(64%) saturate(435%) hue-rotate(93deg) brightness(95%) contrast(91%)'}" />
+							<td class="border px-4 py-2 text-center">
+								<div class="flex items-center justify-center">
+									<img src="${iconSrc}" alt="Call direction" class="w-5 h-5" style="filter: ${call.Direction === 'inbound' ? 'invert(18%) sepia(98%) saturate(7075%) hue-rotate(356deg) brightness(98%) contrast(113%)' : 'invert(56%) sepia(64%) saturate(435%) hue-rotate(93deg) brightness(95%) contrast(91%)'}" />
+								</div>
 							</td>
 							<td class="border px-4 py-2 text-center">${displayNumber}</td>
 							<td class="border px-4 py-2 text-center">${call.CallerName}</td>
+							<td class="border px-4 py-2 text-center">${call.AnsweredBy}</td>
 						`;
 						row.addEventListener('click', () => selectCall(displayNumber, row));
 						callHistoryTableBody.appendChild(row);
@@ -360,6 +364,9 @@
 					document.getElementById('totalPages').textContent = data.data.totalPages;
 					document.getElementById('prevPage').disabled = currentPage === 1;
 					document.getElementById('nextPage').disabled = currentPage >= data.data.totalPages;
+
+					// Clear any existing table selection
+					clearTableSelection();
 				} else {
 					console.error('Failed to fetch call data:', data);
 				}
@@ -367,6 +374,12 @@
 			.catch(error => {
 				console.error('Error fetching call data:', error);
 			});
+		}
+
+		function clearTableSelection() {
+			const selectedRows = document.querySelector('#callHistoryTable tbody').querySelectorAll('.bg-blue-200');
+			selectedRows.forEach(row => row.classList.remove('bg-blue-200'));
+			document.getElementById('callBackButton').disabled = true;
 		}
 
 		document.addEventListener('DOMContentLoaded', () => {
@@ -397,6 +410,8 @@
 		const closeDialerButton = document.getElementById('closeDialerButton');
 		const callButton = document.getElementById('callButton');
 		const phoneNumberInput = document.getElementById('phoneNumber');
+		const callBackButton = document.getElementById('callBackButton');
+		const callHistoryTableBody = document.querySelector('#callHistoryTable tbody');
 
 		openDialerButton.addEventListener('click', () => {
 			dialerModal.classList.remove('hidden');
@@ -416,6 +431,31 @@
 			const phoneNumber = phoneNumberInput.value;
 			alert(`Calling ${phoneNumber}`);
 			// Implement the call logic here
+		});
+
+		document.addEventListener('DOMContentLoaded', () => {
+			const prevPageButton = document.getElementById('prevPage');
+			const nextPageButton = document.getElementById('nextPage');
+			const callBackButton = document.getElementById('callBackButton');
+			const openDialerButton = document.getElementById('openDialerButton');
+
+			function enableButton(button) {
+				button.disabled = false;
+				button.classList.add('hover:bg-blue-600');
+			}
+
+			function disableButton(button) {
+				button.disabled = true;
+				button.classList.remove('hover:bg-blue-600');
+			}
+
+			// Example usage
+			nextPageButton.addEventListener('click', () => {
+				// Logic to go to the next page
+				enableButton(prevPageButton); // Enable previous button
+			});
+
+			// Add similar logic for other buttons as needed
 		});
 	</script>
 </body>
