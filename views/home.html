@@ -36,15 +36,31 @@
 
 	{{ template "header.html" . }}
 
-	<div class="container mx-auto mt-8 flex flex-col md:flex-row">
-		<div class="call-history w-full md:w-2/3 p-4">
-			<h2 class="text-2xl font-semibold mb-4">Call History</h2>
+	<div class="container mx-auto mt-8">
+		<div class="call-history w-full p-4">
+			<h2 class="text-2xl font-semibold mb-4"><i class="fas fa-history mr-2"></i>Call History</h2>
+			<div class="flex justify-between items-center mb-4">
+				<div class="flex items-center space-x-2">
+					<button id="prevPage" class="bg-blue-500 text-white px-4 py-2 rounded-md" disabled>
+						<i class="fas fa-arrow-left mr-2"></i>Previous
+					</button>
+					<button id="nextPage" class="bg-blue-500 text-white px-4 py-2 rounded-md">
+						<i class="fas fa-arrow-right mr-2"></i>Next
+					</button>
+					<button id="callBackButton" class="bg-green-500 text-white px-4 py-2 rounded-md" disabled>
+						<i class="fas fa-reply mr-2"></i>Call Back
+					</button>
+					<button id="openDialerButton" class="bg-blue-500 text-white px-4 py-2 rounded-md">
+						<i class="fas fa-phone-square mr-2"></i>Dialer
+					</button>
+				</div>
+			</div>
 			<table class="min-w-full bg-white rounded-md shadow-md" id="callHistoryTable">
 				<thead>
 					<tr>
 						<th class="py-2 text-center w-1/3">Date</th>
 						<th class="py-2 text-center w-1/6">Direction</th>
-						<th class="py-2 text-center w-1/5">Number</th>
+						<th class="py-2 text-center w-1/4">Number</th>
 						<th class="py-2 text-center w-1/3">Caller Name</th>
 					</tr>
 				</thead>
@@ -52,371 +68,355 @@
 					<!-- Call data will be populated here -->
 				</tbody>
 			</table>
-			<div class="flex justify-between items-center mt-4">
-				<div class="flex items-center space-x-2">
-					<button id="prevPage" class="bg-blue-500 text-white px-4 py-2 rounded-md" disabled>Previous</button>
-					<button id="nextPage" class="bg-blue-500 text-white px-4 py-2 rounded-md">Next</button>
-				</div>
-				<span class="text-gray-700">Page <span id="currentPage">1</span> of <span id="totalPages">1</span></span>
-				<button id="callBackButton" class="bg-green-500 text-white px-4 py-2 rounded-md" disabled>Call Back</button>
-			</div>
 		</div>
 
-		<div class="dialer w-auto md:w-1/4 p-4 flex flex-col items-center justify-center bg-white rounded-md shadow-md ml-auto">
-			<h2 class="text-2xl font-semibold mb-6">Phone Dialer</h2>
+		<div class="flex justify-center mt-2">
+			<span class="text-gray-700">Page <span id="currentPage">1</span> of <span id="totalPages">1</span></span>
+		</div>
+	</div>
+
+	<div id="dialerModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center hidden">
+		<div class="bg-white p-8 rounded-md shadow-md relative">
+			<button id="closeDialerButton" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-2xl p-2">
+				&times;
+			</button>
+			<h2 class="text-2xl font-semibold mb-6"><i class="fas fa-phone-square mr-2"></i>Phone Dialer</h2>
 			<div class="mb-4 w-full">
 				<label for="phoneNumber" class="block text-sm font-medium text-gray-600">Enter Phone Number</label>
 				<input type="text" id="phoneNumber" name="phoneNumber" class="mt-1 p-2 w-full border rounded-md">
 			</div>
-
-			<style>
-				.dtmf-button {
-					height: 3.5rem;
-				}
-			</style>
-
-			<script>
-				document.addEventListener('DOMContentLoaded', function () {
-					const notificationModal = document.getElementById('notificationModal');
-					const enableNotificationsButton = document.getElementById('enableNotificationsButton');
-
-					function askNotificationPermission() {
-						return new Promise(function(resolve, reject) {
-							const permissionResult = Notification.requestPermission(function(result) {
-								resolve(result);
-							});
-
-							if (permissionResult) {
-								permissionResult.then(resolve, reject);
-							}
-						}).then(function(permissionResult) {
-							if (permissionResult !== 'granted') {
-								throw new Error('We weren\'t granted permission.');
-							} else {
-								notificationModal.style.display = 'none';
-							}
-						});
-					}
-
-					enableNotificationsButton.addEventListener('click', function() {
-						askNotificationPermission();
-					});
-
-					if (Notification.permission !== 'granted') {
-						notificationModal.style.display = 'flex';
-					}
-				});
-
-				var AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext;
-	
-				function Tone(context, freq1, freq2) {
-					this.context = context;
-					this.status = 0;
-					this.freq1 = freq1;
-					this.freq2 = freq2;
-				}
-	
-				Tone.prototype.setup = function(){
-					this.osc1 = this.context.createOscillator();
-					this.osc2 = this.context.createOscillator();
-					this.osc1.frequency.value = this.freq1;
-					this.osc2.frequency.value = this.freq2;
-	
-					this.gainNode = this.context.createGain();
-					this.gainNode.gain.value = 0.25;
-	
-					this.filter = this.context.createBiquadFilter();
-					this.filter.type = "lowpass";
-					this.filter.frequency.value = 8000;
-	
-					this.osc1.connect(this.gainNode);
-					this.osc2.connect(this.gainNode);
-	
-					this.gainNode.connect(this.filter);
-					this.filter.connect(this.context.destination);
-				}
-	
-				Tone.prototype.start = function(){
-					this.setup();
-					this.osc1.start(0);
-					this.osc2.start(0);
-					this.status = 1;
-				}
-	
-				Tone.prototype.stop = function(){
-					this.osc1.stop(this.context.currentTime);
-					this.osc2.stop(this.context.currentTime);
-					this.status = 0;
-				}
-	
-				var dtmfFrequencies = {
-					"1": {f1: 697, f2: 1209},
-					"2": {f1: 697, f2: 1336},
-					"3": {f1: 697, f2: 1477},
-					"4": {f1: 770, f2: 1209},
-					"5": {f1: 770, f2: 1336},
-					"6": {f1: 770, f2: 1477},
-					"7": {f1: 852, f2: 1209},
-					"8": {f1: 852, f2: 1336},
-					"9": {f1: 852, f2: 1477},
-					"*": {f1: 941, f2: 1209},
-					"0": {f1: 941, f2: 1336},
-					"#": {f1: 941, f2: 1477}
-				}
-	
-				var context = new AudioContext();
-				var dtmf = new Tone(context, 350, 440);
-	
-				document.addEventListener('DOMContentLoaded', function () {
-					const phoneNumberInput = document.getElementById('phoneNumber');
-					const actionButton = document.getElementById('actionButton');
-					let isCallOngoing = false;
-					
-	
-					function addDigit(digit) {
-						digit = digit.replace(/[^0-9*#]/g, '');
-						phoneNumberInput.value += digit;
-						const frequencyPair = dtmfFrequencies[digit];
-						dtmf.freq1 = frequencyPair.f1;
-						dtmf.freq2 = frequencyPair.f2;
-						if (dtmf.status == 0) {
-							dtmf.start();
-						}
-						setTimeout(() => dtmf.stop(), 200);
-					}
-	
-					window.addDigit = addDigit;
-	
-					document.querySelectorAll('.dtmf-button').forEach(button => {
-						button.addEventListener('mousedown', function(e) {
-							e.preventDefault();
-							const keyPressed = this.innerText;
-							addDigit(keyPressed);
-						});
-					});
-	
-					window.addEventListener('mouseup', function() {
-						if (typeof dtmf !== "undefined" && dtmf.status) {
-							dtmf.stop();
-						}
-					});
-	
-					let buttonIndex = 0;
-					const buttons = document.querySelectorAll('.dtmf-button');
-					const buttonsPerRow = 3;
-					document.body.addEventListener('keydown', function(e) {
-						if(['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'Enter', ' '].includes(e.key)) {
-							e.preventDefault();
-							switch (e.key) {
-								case 'ArrowRight':
-									buttonIndex = (buttonIndex + 1) % buttons.length;
-									break;
-								case 'ArrowLeft':
-									buttonIndex = (buttonIndex - 1 + buttons.length) % buttons.length;
-									break;
-								case 'ArrowUp':
-									buttonIndex = Math.max(0, buttonIndex - buttonsPerRow);
-									break;
-								case 'ArrowDown':
-									buttonIndex = Math.min(buttons.length - 1, buttonIndex + buttonsPerRow);
-									break;
-							}
-							buttons[buttonIndex].focus();
-	
-							if (e.key === 'Enter' || e.key === ' ') {
-								buttons[buttonIndex].click();
-							}
-						}
-					});
-				}); 
-	
-				window.addEventListener('DOMContentLoaded', (event) => {
-					document.getElementById('actionButton').addEventListener('click', function () {
-						const phoneNumber = document.getElementById('phoneNumber').value.trim();
-						if (phoneNumber !== '') {
-							const modal = document.createElement('div');
-							modal.innerHTML = `
-								<div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center" style="width: 100%; height: 100%;">
-									<div class="bg-white p-4 w-96 h-36 m-auto flex flex-col rounded-lg justify-center items-center relative">
-										<div class="flex items-center">
-											<h2 class="text-lg mr-2">Calling ${phoneNumber}</h2>
-											<div id="loading-dots">.<span></span><span></span><span></span></div>
-										</div>
-										<button onclick="this.parentElement.parentElement.remove()" class="text-gray-600 hover:text-gray-800 absolute top-0 right-0 m-2">
-											<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-										</button>
-									</div>
-								</div>
-							`;
-							document.body.appendChild(modal);
-	
-							function animateDots() {
-								const dotsContainer = document.getElementById('loading-dots');
-								let dotCount = 0;
-	
-								setInterval(() => {
-									dotCount = (dotCount + 1) % 4;
-									let dots = '.'.repeat(dotCount) + ' '.repeat(3 - dotCount);
-									dotsContainer.textContent = dots;
-								}, 500);
-							}
-	
-							animateDots();
-	
-						}
-					});
-				});
-
-				let currentPage = 1;
-				const callsPerPage = 10;
-
-				let selectedCallNumber = null;
-				let selectedRow = null;
-
-				function selectCall(callNumber, rowElement) {
-					if (selectedRow) {
-						selectedRow.classList.remove('bg-blue-200');
-					}
-					selectedRow = rowElement;
-					selectedRow.classList.add('bg-blue-200');
-					selectedCallNumber = callNumber;
-					document.getElementById('callBackButton').disabled = false;
-				}
-
-				function fetchCallData(page) {
-					const requestData = {
-						page: page,
-						limit: callsPerPage
-					};
-
-					fetch('/readCalls', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json'
-						},
-						body: JSON.stringify(requestData)
-					})
-					.then(response => {
-						if (!response.ok) {
-							throw new Error('Network response was not ok');
-						}
-						return response.json();
-					})
-					.then(data => {
-						if (data.success) {
-							const callHistoryTableBody = document.getElementById('callHistoryTable').querySelector('tbody');
-							callHistoryTableBody.innerHTML = '';
-
-							data.data.calls.forEach(call => {
-								const date = new Date(call.CreatedDate);
-								const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-
-								const iconSrc = call.Direction === 'inbound' ? 'inbound.svg' : 'outbound.svg';
-
-								const displayNumber = call.Direction === 'inbound' ? call.From : call.To;
-
-								const row = document.createElement('tr');
-								row.innerHTML = `
-									<td class="border px-4 py-2 text-center">${formattedDate}</td>
-									<td class="border px-4 py-2 text-center flex items-center justify-center">
-    									<img src="${iconSrc}" alt="Call direction" class="w-6 h-6 " style="filter: ${call.Direction === 'inbound' ? 'invert(18%) sepia(98%) saturate(7075%) hue-rotate(356deg) brightness(98%) contrast(113%)' : 'invert(56%) sepia(64%) saturate(435%) hue-rotate(93deg) brightness(95%) contrast(91%)'}" />
-									</td>
-									<td class="border px-4 py-2 text-center">${displayNumber}</td>
-									<td class="border px-4 py-2 text-center">${call.CallerName}</td>
-								`;
-								row.addEventListener('click', () => selectCall(displayNumber, row));
-								callHistoryTableBody.appendChild(row);
-							});
-
-							document.getElementById('currentPage').textContent = data.data.currentPage;
-							document.getElementById('totalPages').textContent = data.data.totalPages;
-							document.getElementById('prevPage').disabled = currentPage === 1;
-							document.getElementById('nextPage').disabled = currentPage >= data.data.totalPages;
-						} else {
-							console.error('Failed to fetch call data:', data);
-						}
-					})
-					.catch(error => {
-						console.error('Error fetching call data:', error);
-					});
-				}
-
-				document.addEventListener('DOMContentLoaded', () => {
-					fetchCallData(currentPage);
-
-					document.getElementById('prevPage').addEventListener('click', () => {
-						if (currentPage > 1) {
-							currentPage--;
-							fetchCallData(currentPage);
-						}
-					});
-
-					document.getElementById('nextPage').addEventListener('click', () => {
-						currentPage++;
-						fetchCallData(currentPage);
-					});
-
-					document.getElementById('callBackButton').addEventListener('click', () => {
-						if (selectedCallNumber) {
-							alert(`Calling back ${selectedCallNumber}`);
-							// Implement the call back logic here
-						}
-					});
-				});
-			</script>
-
 			<div class="grid grid-cols-3 gap-4 mb-4">
-				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
-					<span class="block">1</span>
-				</button>
-				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
-					<span class="block">2</span>
-					<span class="block text-gray-500 text-opacity-50">ABC</span>
-				</button>
-				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
-					<span class="block">3</span>
-					<span class="block text-gray-500 text-opacity-50">DEF</span>
-				</button>
-				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
-					<span class="block">4</span>
-					<span class="block text-gray-500 text-opacity-50">GHI</span>
-				</button>
-				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
-					<span class="block">5</span>
-					<span class="block text-gray-500 text-opacity-50">JKL</span>
-				</button>
-				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
-					<span class="block">6</span>
-					<span class="block text-gray-500 text-opacity-50">MNO</span>
-				</button>
-				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
-					<span class="block">7</span>
-					<span class="block text-gray-500 text-opacity-50">PQRS</span>
-				</button>
-				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
-					<span class="block">8</span>
-					<span class="block text-gray-500 text-opacity-50">TUV</span>
-				</button>
-				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
-					<span class="block">9</span>
-					<span class="block text-gray-500 text-opacity-50">WXYZ</span>
-				</button>
-				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
-					<span class="block">*</span>
-				</button>
-				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
-					<span class="block">0</span>
-				</button>
-				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">
-					<span class="block">#</span>
-				</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">1</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">2</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">3</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">4</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">5</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">6</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">7</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">8</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">9</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">*</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">0</button>
+				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">#</button>
 			</div>
-
-			<button id="actionButton"
-				class="w-full py-2 bg-green-500 text-white rounded-md hover:bg-green-600 focus:outline-none focus:ring focus:border-green-300">
-				Dial
-			</button>
+			<button id="callButton" class="w-full py-2 bg-green-500 text-white rounded-md" disabled>Call</button>
 		</div>
 	</div>
+
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+			const notificationModal = document.getElementById('notificationModal');
+			const enableNotificationsButton = document.getElementById('enableNotificationsButton');
+
+			function askNotificationPermission() {
+				return new Promise(function(resolve, reject) {
+					const permissionResult = Notification.requestPermission(function(result) {
+						resolve(result);
+					});
+
+					if (permissionResult) {
+						permissionResult.then(resolve, reject);
+					}
+				}).then(function(permissionResult) {
+					if (permissionResult !== 'granted') {
+						throw new Error('We weren\'t granted permission.');
+					} else {
+						notificationModal.style.display = 'none';
+					}
+				});
+			}
+
+			enableNotificationsButton.addEventListener('click', function() {
+				askNotificationPermission();
+			});
+
+			if (Notification.permission !== 'granted') {
+				notificationModal.style.display = 'flex';
+			}
+		});
+
+		var AudioContext = window.AudioContext || window.webkitAudioContext || window.mozAudioContext;
+
+		function Tone(context, freq1, freq2) {
+			this.context = context;
+			this.status = 0;
+			this.freq1 = freq1;
+			this.freq2 = freq2;
+		}
+
+		Tone.prototype.setup = function(){
+			this.osc1 = this.context.createOscillator();
+			this.osc2 = this.context.createOscillator();
+			this.osc1.frequency.value = this.freq1;
+			this.osc2.frequency.value = this.freq2;
+
+			this.gainNode = this.context.createGain();
+			this.gainNode.gain.value = 0.25;
+
+			this.filter = this.context.createBiquadFilter();
+			this.filter.type = "lowpass";
+			this.filter.frequency.value = 8000;
+
+			this.osc1.connect(this.gainNode);
+			this.osc2.connect(this.gainNode);
+
+			this.gainNode.connect(this.filter);
+			this.filter.connect(this.context.destination);
+		}
+
+		Tone.prototype.start = function(){
+			this.setup();
+			this.osc1.start(0);
+			this.osc2.start(0);
+			this.status = 1;
+		}
+
+		Tone.prototype.stop = function(){
+			this.osc1.stop(this.context.currentTime);
+			this.osc2.stop(this.context.currentTime);
+			this.status = 0;
+		}
+
+		var dtmfFrequencies = {
+			"1": {f1: 697, f2: 1209},
+			"2": {f1: 697, f2: 1336},
+			"3": {f1: 697, f2: 1477},
+			"4": {f1: 770, f2: 1209},
+			"5": {f1: 770, f2: 1336},
+			"6": {f1: 770, f2: 1477},
+			"7": {f1: 852, f2: 1209},
+			"8": {f1: 852, f2: 1336},
+			"9": {f1: 852, f2: 1477},
+			"*": {f1: 941, f2: 1209},
+			"0": {f1: 941, f2: 1336},
+			"#": {f1: 941, f2: 1477}
+		}
+
+		var context = new AudioContext();
+		var dtmf = new Tone(context, 350, 440);
+
+		document.addEventListener('DOMContentLoaded', function () {
+			const phoneNumberInput = document.getElementById('phoneNumber');
+			const actionButton = document.getElementById('actionButton');
+			let isCallOngoing = false;
+			
+
+			function addDigit(digit) {
+				digit = digit.replace(/[^0-9*#]/g, '');
+				phoneNumberInput.value += digit;
+				const frequencyPair = dtmfFrequencies[digit];
+				dtmf.freq1 = frequencyPair.f1;
+				dtmf.freq2 = frequencyPair.f2;
+				if (dtmf.status == 0) {
+					dtmf.start();
+				}
+				setTimeout(() => dtmf.stop(), 200);
+			}
+
+			window.addDigit = addDigit;
+
+			document.querySelectorAll('.dtmf-button').forEach(button => {
+				button.addEventListener('mousedown', function(e) {
+					e.preventDefault();
+					const keyPressed = this.innerText;
+					addDigit(keyPressed);
+				});
+			});
+
+			window.addEventListener('mouseup', function() {
+				if (typeof dtmf !== "undefined" && dtmf.status) {
+					dtmf.stop();
+				}
+			});
+
+			let buttonIndex = 0;
+			const buttons = document.querySelectorAll('.dtmf-button');
+			const buttonsPerRow = 3;
+			document.body.addEventListener('keydown', function(e) {
+				if(['ArrowRight', 'ArrowLeft', 'ArrowUp', 'ArrowDown', 'Enter', ' '].includes(e.key)) {
+					e.preventDefault();
+					switch (e.key) {
+						case 'ArrowRight':
+							buttonIndex = (buttonIndex + 1) % buttons.length;
+							break;
+						case 'ArrowLeft':
+							buttonIndex = (buttonIndex - 1 + buttons.length) % buttons.length;
+							break;
+						case 'ArrowUp':
+							buttonIndex = Math.max(0, buttonIndex - buttonsPerRow);
+							break;
+						case 'ArrowDown':
+							buttonIndex = Math.min(buttons.length - 1, buttonIndex + buttonsPerRow);
+							break;
+					}
+					buttons[buttonIndex].focus();
+
+					if (e.key === 'Enter' || e.key === ' ') {
+						buttons[buttonIndex].click();
+					}
+				}
+			});
+		}); 
+
+		window.addEventListener('DOMContentLoaded', (event) => {
+			document.getElementById('actionButton').addEventListener('click', function () {
+				const phoneNumber = document.getElementById('phoneNumber').value.trim();
+				if (phoneNumber !== '') {
+					const modal = document.createElement('div');
+					modal.innerHTML = `
+						<div class="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center" style="width: 100%; height: 100%;">
+							<div class="bg-white p-4 w-96 h-36 m-auto flex flex-col rounded-lg justify-center items-center relative">
+								<div class="flex items-center">
+									<h2 class="text-lg mr-2">Calling ${phoneNumber}</h2>
+									<div id="loading-dots">.<span></span><span></span><span></span></div>
+								</div>
+								<button onclick="this.parentElement.parentElement.remove()" class="text-gray-600 hover:text-gray-800 absolute top-0 right-0 m-2">
+									<svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+								</button>
+							</div>
+						</div>
+					`;
+					document.body.appendChild(modal);
+
+					function animateDots() {
+						const dotsContainer = document.getElementById('loading-dots');
+						let dotCount = 0;
+
+						setInterval(() => {
+							dotCount = (dotCount + 1) % 4;
+							let dots = '.'.repeat(dotCount) + ' '.repeat(3 - dotCount);
+							dotsContainer.textContent = dots;
+						}, 500);
+					}
+
+					animateDots();
+
+				}
+			});
+		});
+
+		let currentPage = 1;
+		const callsPerPage = 10;
+
+		let selectedCallNumber = null;
+		let selectedRow = null;
+
+		function selectCall(callNumber, rowElement) {
+			if (selectedRow) {
+				selectedRow.classList.remove('bg-blue-200');
+			}
+			selectedRow = rowElement;
+			selectedRow.classList.add('bg-blue-200');
+			selectedCallNumber = callNumber;
+			document.getElementById('callBackButton').disabled = false;
+		}
+
+		function fetchCallData(page) {
+			const requestData = {
+				page: page,
+				limit: callsPerPage
+			};
+
+			fetch('/readCalls', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(requestData)
+			})
+			.then(response => {
+				if (!response.ok) {
+					throw new Error('Network response was not ok');
+				}
+				return response.json();
+			})
+			.then(data => {
+				if (data.success) {
+					const callHistoryTableBody = document.getElementById('callHistoryTable').querySelector('tbody');
+					callHistoryTableBody.innerHTML = '';
+
+					data.data.calls.forEach(call => {
+						const date = new Date(call.CreatedDate);
+						const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
+						const iconSrc = call.Direction === 'inbound' ? 'inbound.svg' : 'outbound.svg';
+
+						const displayNumber = call.Direction === 'inbound' ? call.From : call.To;
+
+						const row = document.createElement('tr');
+						row.innerHTML = `
+							<td class="border px-4 py-2 text-center">${formattedDate}</td>
+							<td class="border px-4 py-2 text-center flex items-center justify-center">
+    							<img src="${iconSrc}" alt="Call direction" class="w-6 h-6 " style="filter: ${call.Direction === 'inbound' ? 'invert(18%) sepia(98%) saturate(7075%) hue-rotate(356deg) brightness(98%) contrast(113%)' : 'invert(56%) sepia(64%) saturate(435%) hue-rotate(93deg) brightness(95%) contrast(91%)'}" />
+							</td>
+							<td class="border px-4 py-2 text-center">${displayNumber}</td>
+							<td class="border px-4 py-2 text-center">${call.CallerName}</td>
+						`;
+						row.addEventListener('click', () => selectCall(displayNumber, row));
+						callHistoryTableBody.appendChild(row);
+					});
+
+					document.getElementById('currentPage').textContent = data.data.currentPage;
+					document.getElementById('totalPages').textContent = data.data.totalPages;
+					document.getElementById('prevPage').disabled = currentPage === 1;
+					document.getElementById('nextPage').disabled = currentPage >= data.data.totalPages;
+				} else {
+					console.error('Failed to fetch call data:', data);
+				}
+			})
+			.catch(error => {
+				console.error('Error fetching call data:', error);
+			});
+		}
+
+		document.addEventListener('DOMContentLoaded', () => {
+			fetchCallData(currentPage);
+
+			document.getElementById('prevPage').addEventListener('click', () => {
+				if (currentPage > 1) {
+					currentPage--;
+					fetchCallData(currentPage);
+				}
+			});
+
+			document.getElementById('nextPage').addEventListener('click', () => {
+				currentPage++;
+				fetchCallData(currentPage);
+			});
+
+			document.getElementById('callBackButton').addEventListener('click', () => {
+				if (selectedCallNumber) {
+					alert(`Calling back ${selectedCallNumber}`);
+					// Implement the call back logic here
+				}
+			});
+		});
+
+		const dialerModal = document.getElementById('dialerModal');
+		const openDialerButton = document.getElementById('openDialerButton');
+		const closeDialerButton = document.getElementById('closeDialerButton');
+		const callButton = document.getElementById('callButton');
+		const phoneNumberInput = document.getElementById('phoneNumber');
+
+		openDialerButton.addEventListener('click', () => {
+			dialerModal.classList.remove('hidden');
+		});
+
+		closeDialerButton.addEventListener('click', () => {
+			dialerModal.classList.add('hidden');
+		});
+
+		phoneNumberInput.addEventListener('input', () => {
+			const phoneNumber = phoneNumberInput.value;
+			// Simple validation: enable the call button if the phone number is at least 7 digits
+			callButton.disabled = !/^\d{7,}$/.test(phoneNumber);
+		});
+
+		callButton.addEventListener('click', () => {
+			const phoneNumber = phoneNumberInput.value;
+			alert(`Calling ${phoneNumber}`);
+			// Implement the call logic here
+		});
+	</script>
 </body>
 </html>
