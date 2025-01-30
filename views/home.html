@@ -62,7 +62,7 @@
 						<th class="py-2 text-center w-1/6 border border-gray-300">Direction</th>
 						<th class="py-2 text-center w-1/5 border border-gray-300">Number</th>
 						<th class="py-2 text-center w-1/5 border border-gray-300">Caller Name</th>
-						<th class="py-2 text-center w-1/5 border border-gray-300">Answered By</th>
+						<th class="py-2 text-center w-1/5 border border-gray-300">Handled By</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -399,8 +399,8 @@
 
 			document.getElementById('callBackButton').addEventListener('click', () => {
 				if (selectedCallNumber) {
-					alert(`Calling back ${selectedCallNumber}`);
-					// Implement the call back logic here
+					dialerModal.classList.remove('hidden');
+					phoneNumberInput.value =  selectedCallNumber.replace(/^\+/, '');;
 				}
 			});
 		});
@@ -429,8 +429,30 @@
 
 		callButton.addEventListener('click', () => {
 			const phoneNumber = phoneNumberInput.value;
-			alert(`Calling ${phoneNumber}`);
-			// Implement the call logic here
+
+			// Prepare the data to be sent
+			const data = { phoneNumber: phoneNumber };
+
+			// Send the data via POST request
+			fetch('/dial', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify(data),
+			})
+			.then(response => response.json())
+			.then(data => {
+				if (data.success) {
+					alert('Call initiated successfully.');
+				} else {
+					alert('Failed to initiate call.');
+				}
+			})
+			.catch(error => {
+				console.error('Error:', error);
+				alert('An error occurred while trying to initiate the call.');
+			});
 		});
 
 		document.addEventListener('DOMContentLoaded', () => {

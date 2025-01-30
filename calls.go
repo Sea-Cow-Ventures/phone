@@ -1,5 +1,11 @@
 package main
 
+import (
+	"fmt"
+
+	twilioApi "github.com/twilio/twilio-go/rest/api/v2010"
+)
+
 type Call struct {
 	ID          string `db:"id"`
 	From        string `db:"fromNumber"`
@@ -68,4 +74,20 @@ func readCalls(page int, limit int) (CallResponse, error) {
 		TotalPages:  totalPages,
 		CurrentPage: page,
 	}, nil
+}
+
+func dialNumber(agentNumber string, toNumber string) error {
+	params := &twilioApi.CreateCallParams{}
+	params.SetTo(agentNumber)
+	params.SetFrom(cnf.PhoneNumber)
+	params.SetUrl("https://" + cnf.UrlBasePath + "/connectAgent?toNumber=" + toNumber)
+
+	resp, err := t.Api.CreateCall(params)
+	if err != nil {
+		logger.Sugar().Infof("Failed to initiate call: %v", err)
+		return fmt.Errorf("failed to initiate call: %w", err)
+	}
+
+	logger.Sugar().Infof("Call initiated with SID: %s", *resp.Sid)
+	return nil
 }

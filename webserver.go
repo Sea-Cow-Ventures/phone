@@ -84,6 +84,7 @@ func initWebserver() {
 	e.POST("/hold", holdHandler)
 	e.POST("/connectAgent", connectAgentHandler)
 	e.GET("/holdMusic", holdMusicHandler)
+	e.POST("/dial", dialHandler, isLoggedInHandler)
 }
 
 type ErrorResponse struct {
@@ -493,37 +494,22 @@ func readCallsHandler(c echo.Context) error {
 }
 
 func connectAgentHandler(c echo.Context) error {
-	fmt.Println("GET Data:")
-	for key, value := range c.QueryParams() {
-		fmt.Printf("%s: %s\n", key, value)
+	toNumber := c.QueryParam("toNumber")
+	if toNumber == "" {
+		return c.String(http.StatusBadRequest, "Missing 'toNumber' parameter")
 	}
 
-	// Capture and print POST data
-	fmt.Println("POST Data:")
-	if c.Request().Method == http.MethodPost {
-		body, err := io.ReadAll(c.Request().Body)
-		if err != nil {
-			fmt.Println("Error reading request body:", err)
-		} else {
-			fmt.Println(string(body))
-		}
+	voiceBody := []twiml.Element{
+		twiml.VoiceDial{Number: toNumber},
 	}
 
-	play := []twiml.Element{
-		twiml.VoiceDial{InnerElements: []twiml.Element{
-			twiml.VoiceQueue{Name: "rep"},
-		},
-		},
-	}
-	twimlResult, err := twiml.Voice(play)
+	twimlResult, err := twiml.Voice(voiceBody)
 	if err != nil {
-		c.String(http.StatusInternalServerError, err.Error())
-	} else {
-		c.Response().Header().Set("Content-Type", "text/xml")
-		c.String(http.StatusOK, twimlResult)
+		return c.String(http.StatusInternalServerError, err.Error())
 	}
 
-	return nil
+	c.Response().Header().Set("Content-Type", "text/xml")
+	return c.String(http.StatusOK, twimlResult)
 }
 
 func homeHandler(c echo.Context) error {
@@ -551,6 +537,49 @@ func homeHandler(c echo.Context) error {
 	}
 
 	return c.Render(http.StatusOK, "home.html", data)
+}
+
+func dialHandler(c echo.Context) error {
+	type dialInput struct {
+		PhoneNumber string `json:"phoneNumber" validate:"required"`
+	}
+	input := new(dialInput)
+
+	if err := c.Bind(&input); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Invalid input format",
+		})
+	}
+
+	if err := c.Validate(input); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Validation failed: " + err.Error(),
+		})
+	}
+
+	cookie, err := c.Cookie("username")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Bad Cookie",
+		})
+	}
+
+	agent, err := readAgentByName(cookie.Value)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Bad Username",
+		})
+	}
+
+	dialNumber(agent.Number, input.PhoneNumber)
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"success": true,
+	})
 }
 
 func logoutHandler(c echo.Context) error {
