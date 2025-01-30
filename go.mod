@@ -1,4 +1,4 @@
-module AidanFLaw/phone
+module aidan/phone
 
 go 1.21.0
 

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"aidan/phone/pkg/util"
+
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
@@ -62,16 +64,16 @@ var inQueue int
 
 func init() {
 	var err error
-	workingDir, err = getWorkingDir()
+	workingDir, err = util.GetWorkingDir()
 	if err != nil {
 		panic(fmt.Errorf("unable to get working dir: %w", err))
 	}
 
-	logger = createLogger(workingDir, "go-phone.log")
+	logger = util.CreateLogger(workingDir, "go-phone.log")
 
 	logger.Info("Init")
 
-	err = loadConfig(workingDir+"/config.json", &cnf)
+	err = util.LoadConfig(workingDir+"/config.json", &cnf)
 	if err != nil {
 		logger.Fatal("Failed to load config", zap.Error(err))
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"aidan/phone/pkg/util"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -62,7 +63,7 @@ func initWebserver() {
 	e.Validator = &CustomValidator{validator: validator.New()}
 
 	// Define routes
-	e.Static("/", "views")
+	e.Static("/static", "web/static")
 	e.GET("/", loginHandler)
 	e.GET("/login", loginHandler)
 	e.GET("/home", homeHandler, isLoggedInHandler)
@@ -205,7 +206,7 @@ func recoverMiddleware() echo.MiddlewareFunc {
 
 func isLoggedInHandler(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		_, found := readLoginCookie(c)
+		_, found := util.ReadLoginCookie(c)
 		if !found {
 			return c.Redirect(http.StatusFound, "/login")
 		}
@@ -215,7 +216,7 @@ func isLoggedInHandler(next echo.HandlerFunc) echo.HandlerFunc {
 
 func isAdminHandler(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		username, _ := readLoginCookie(c)
+		username, _ := util.ReadLoginCookie(c)
 		userIsAdmin, err := isAdmin(username)
 		if !userIsAdmin || err != nil {
 			return c.Redirect(http.StatusFound, "/home")
@@ -783,7 +784,7 @@ func editUserHandler(c echo.Context) error {
 		})
 	}
 
-	hashedPassword, err := hashPassword(input.Password)
+	hashedPassword, err := util.HashPassword(input.Password)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
 			"success": false,
@@ -825,7 +826,7 @@ func removeUserHandler(c echo.Context) error {
 }
 
 func loginHandler(c echo.Context) error {
-	_, found := readLoginCookie(c)
+	_, found := util.ReadLoginCookie(c)
 	if found {
 		return c.Redirect(http.StatusFound, "/home")
 	}
@@ -859,7 +860,7 @@ func signinHandler(c echo.Context) error {
 	err = bcrypt.CompareHashAndPassword([]byte(agent.HashedPassword), []byte(login.Password))
 
 	if err == nil {
-		writeLoginCookie(c, agent.Username)
+		util.WriteLoginCookie(c, agent.Username)
 		return c.JSON(http.StatusOK, map[string]interface{}{
 			"success":     true,
 			"redirectURL": "/home",
@@ -874,8 +875,8 @@ func signinHandler(c echo.Context) error {
 
 func loadTemplates() {
 	parsedTemplates, err := template.New("").Funcs(template.FuncMap{
-		"toJSON": toJSON,
-	}).ParseGlob("views/*.html")
+		"toJSON": util.ToJSON,
+	}).ParseGlob("web/templates/*.html")
 	if err != nil {
 		logger.Fatal("Failed to parse templates", zap.Error(err))
 	}
@@ -893,7 +894,7 @@ func startLiveReloadWatcher() {
 	defer watcher.Close()
 
 	// Watch the directory containing your views
-	err = watcher.Add("views")
+	err = watcher.Add("web/templates")
 	if err != nil {
 		logger.Fatal("Failed to add fsnotify watcher", zap.Error(err))
 	}

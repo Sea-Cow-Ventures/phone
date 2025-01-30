@@ -1,6 +1,7 @@
 package main
 
 import (
+	"aidan/phone/pkg/util"
 	"fmt"
 	"sync"
 
@@ -54,12 +55,12 @@ func insertAgent(a *Agent) error {
 func createDefaultAdmin() (*Agent, error) {
 	var admin = Agent{
 		Username: "admin",
-		Password: generateRandomString(8),
+		Password: util.GenerateRandomString(8),
 		IsAdmin:  true,
 		Priority: -1,
 	}
 
-	hashedPassword, err := hashPassword(admin.Password)
+	hashedPassword, err := util.HashPassword(admin.Password)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +71,7 @@ func createDefaultAdmin() (*Agent, error) {
 }
 
 func createAgent(username, password, email, number string, isAdmin bool) {
-	hashedPassword, err := hashPassword(password)
+	hashedPassword, err := util.HashPassword(password)
 	if err != nil {
 		logger.Error("Failed to hash password", zap.Error(err))
 		return

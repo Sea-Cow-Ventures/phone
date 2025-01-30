@@ -48,7 +48,7 @@
 						<i class="fas fa-arrow-right mr-2"></i>Next
 					</button>
 					<button id="callBackButton" class="bg-green-500 text-white px-4 py-2 rounded-md disabled:bg-green-500" disabled>
-						<img src="call-return.svg" class="inline-block w-5 h-5 mr-2" style="filter: invert(1) brightness(2) contrast(2);">Call Back
+						<img src="/static/images/call-return.svg" class="inline-block w-5 h-5 mr-2" style="filter: invert(1) brightness(2) contrast(2);">Call Back
 					</button>
 					<button id="openDialerButton" style="background-color: #EFBC9B;" class="text-white px-4 py-2 rounded-md hover:bg-blue-600">
 						<i class="fas fa-phone-square mr-2"></i>Dialer
@@ -340,7 +340,7 @@
 						const date = new Date(call.CreatedDate);
 						const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 
-						const iconSrc = call.Direction === 'inbound' ? 'inbound.svg' : 'outbound.svg';
+						const iconSrc = call.Direction === 'inbound' ? '/static/images/inbound.svg' : '/static/images/outbound.svg';
 
 						const displayNumber = call.Direction === 'inbound' ? call.From : call.To;
 

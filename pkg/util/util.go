@@ -1,11 +1,11 @@
-package main
+package util
 
 import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math"
 	"math/big"
 	"net/http"
@@ -23,7 +23,7 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-func createLogger(logDirPath string, fileName string) *zap.Logger {
+func CreateLogger(logDirPath string, fileName string) *zap.Logger {
 	stdout := zapcore.AddSync(os.Stdout)
 
 	//auto log rotate
@@ -54,19 +54,19 @@ func createLogger(logDirPath string, fileName string) *zap.Logger {
 	return zap.New(core)
 }
 
-func getWorkingDir() (string, error) {
+func GetWorkingDir() (string, error) {
 	return filepath.Abs(filepath.Dir(os.Args[0]))
 }
 
 // json formatted config loader, pass a config pointer
-func loadConfig(path string, config interface{}) error {
+func LoadConfig(path string, config interface{}) error {
 	configFile, err := os.Open(path)
 	if err != nil {
 		return fmt.Errorf("failed to open json config file: %w", err)
 	}
 	defer configFile.Close()
 
-	data, err := ioutil.ReadAll(configFile)
+	data, err := io.ReadAll(configFile)
 	if err != nil {
 		return fmt.Errorf("failed to read json config file: %w", err)
 	}
@@ -79,7 +79,7 @@ func loadConfig(path string, config interface{}) error {
 	return nil
 }
 
-func getHostname() string {
+func GetHostname() string {
 	hostname, err := os.Hostname()
 	if err != nil {
 		return "Unknown"
@@ -87,7 +87,7 @@ func getHostname() string {
 	return hostname
 }
 
-func getStackTrace() string {
+func GetStackTrace() string {
 	// Retrieve the stack trace
 	stack := make([]byte, 4096)
 	length := runtime.Stack(stack, false)
@@ -97,7 +97,7 @@ func getStackTrace() string {
 }
 
 // depth of 1 is the file that called this, 1 < n = files higher in the stack
-func getCaller(depth int) string {
+func GetCaller(depth int) string {
 	pc, file, line, ok := runtime.Caller(depth)
 
 	if !ok {
@@ -112,7 +112,7 @@ func getCaller(depth int) string {
 	return fmt.Sprintf("[%s] %s:%d\n", funcName, file, line)
 }
 
-func removeElementFromSlice(slicePtr interface{}, indexToRemove int) error {
+func RemoveElementFromSlice(slicePtr interface{}, indexToRemove int) error {
 	sliceValue := reflect.ValueOf(slicePtr).Elem()
 
 	if sliceValue.Kind() != reflect.Slice {
@@ -131,7 +131,7 @@ func removeElementFromSlice(slicePtr interface{}, indexToRemove int) error {
 	return nil
 }
 
-func localTimeNow() (time.Time, error) {
+func LocalTimeNow() (time.Time, error) {
 	location, err := time.LoadLocation("America/Chicago")
 	if err != nil {
 		return time.Time{}, err
@@ -141,7 +141,7 @@ func localTimeNow() (time.Time, error) {
 	return currentTime, nil
 }
 
-func toJSON(v interface{}) (string, error) {
+func ToJSON(v interface{}) (string, error) {
 	a, err := json.Marshal(v)
 	if err != nil {
 		return "", err
@@ -149,7 +149,7 @@ func toJSON(v interface{}) (string, error) {
 	return string(a), nil
 }
 
-func generateRandomString(length int) string {
+func GenerateRandomString(length int) string {
 	const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	var result string
 	for i := 0; i < length; i++ {
@@ -159,13 +159,13 @@ func generateRandomString(length int) string {
 	return result
 }
 
-func hashPassword(password string) (string, error) {
+func HashPassword(password string) (string, error) {
 	var passwordBytes = []byte(password)
 	hashedPasswordBytes, err := bcrypt.GenerateFromPassword(passwordBytes, 10)
 	return string(hashedPasswordBytes), err
 }
 
-func writeLoginCookie(c echo.Context, name string) {
+func WriteLoginCookie(c echo.Context, name string) {
 	cookie := new(http.Cookie)
 	cookie.Name = "username"
 	cookie.Value = name
@@ -176,7 +176,7 @@ func writeLoginCookie(c echo.Context, name string) {
 	c.SetCookie(cookie)
 }
 
-func readLoginCookie(c echo.Context) (string, bool) {
+func ReadLoginCookie(c echo.Context) (string, bool) {
 	cookie, err := c.Cookie("username")
 	if err != nil {
 		return "", false
