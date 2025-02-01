@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"aidan/phone/pkg/util"
@@ -12,11 +12,20 @@ import (
 	"text/template"
 	"time"
 
+	"aidan/phone/internal/config"
+	"aidan/phone/internal/database"
+	"aidan/phone/internal/log"
+	"aidan/phone/internal/server/call"
+	"aidan/phone/internal/twilioWrapper"
+
 	"github.com/fsnotify/fsnotify"
 	"github.com/go-playground/validator"
+	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	tValidatorClient "github.com/twilio/twilio-go/client"
+
+	"github.com/twilio/twilio-go"
 	"github.com/twilio/twilio-go/twiml"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -42,8 +51,25 @@ func (cv *CustomValidator) Validate(i interface{}) error {
 	return nil
 }
 
-func initWebserver() {
-	e = echo.New()
+var (
+	Cnf    config.AppConfig
+	Logger *zap.SugaredLogger
+	DB     *sqlx.DB
+	T      *twilio.RestClient
+)
+
+var _ call.Logger = Logger
+
+func init() {
+	Cnf = config.GetConfig()
+	Logger = log.GetLogger()
+	DB = database.GetDb()
+	T = twilioWrapper.Connect()
+}
+
+func Start() {
+	e := echo.New()
+	initServer(e)
 
 	// Initial template loading
 	loadTemplates()
@@ -68,7 +94,7 @@ func initWebserver() {
 	e.GET("/login", loginHandler)
 	e.GET("/home", homeHandler, isLoggedInHandler)
 	e.GET("/calls", homeHandler, isLoggedInHandler)
-	e.POST("/readCalls", readCallsHandler, isLoggedInHandler)
+	e.POST("/readCalls", call.ReadCallsHandler, isLoggedInHandler)
 	e.GET("/smsLog", smsLogHandler, isLoggedInHandler)
 	e.GET("/readMessagedPhoneNumbers", readMessagedPhoneNumbersHandler, isLoggedInHandler)
 	e.POST("/sendMessage", sendMessageHandler, isLoggedInHandler)
@@ -81,8 +107,8 @@ func initWebserver() {
 	e.GET("/settings", settingsHandler, isLoggedInHandler, isAdminHandler)
 	e.POST("/sms", smsHandler)
 	e.POST("/voice", voiceHandler)
-	e.POST("/welcome", welcomeHandler)
-	e.POST("/hold", holdHandler)
+	//e.POST("/welcome", welcomeHandler)
+	//e.POST("/hold", holdHandler)
 	e.POST("/connectAgent", connectAgentHandler)
 	e.GET("/holdMusic", holdMusicHandler)
 	e.POST("/dial", dialHandler, isLoggedInHandler)
@@ -132,7 +158,7 @@ func loggerMiddleware() echo.MiddlewareFunc {
 			case n >= 500:
 				body, err := io.ReadAll(c.Request().Body)
 				if err != nil {
-					logger.Error("Failed to read request body", zap.Error(err))
+					Logger.Error("Failed to read request body", zap.Error(err))
 					return err
 				}
 				c.Request().Body = io.NopCloser(bytes.NewReader(body))
@@ -140,7 +166,7 @@ func loggerMiddleware() echo.MiddlewareFunc {
 				fields = append(fields, zap.String("request_body", string(body)))
 				fields = append(fields, zap.Error(err))
 
-				logger.With(zap.Error(err)).Error("Webserver error", fields...)
+				Logger.With(zap.Error(err)).Error("Webserver error", fields...)
 				//emailErr := email.SendErrorEmail(
 				//	config.MailServer,
 				//	config.ServiceName,
@@ -156,17 +182,17 @@ func loggerMiddleware() echo.MiddlewareFunc {
 			case n >= 400:
 				body, err := io.ReadAll(c.Request().Body)
 				if err != nil {
-					logger.Error("Failed to read request body", zap.Error(err))
+					Logger.Error("Failed to read request body", zap.Error(err))
 					return err
 				}
 
 				fields = append(fields, zap.String("request_body", string(body)))
 
-				logger.With(zap.Error(err)).Warn("Webserver client error", fields...)
+				Logger.With(zap.Error(err)).Warn("Webserver client error", fields...)
 			case n >= 300:
-				logger.Info("Webserver redirection", fields...)
+				Logger.Info("Webserver redirection", fields...)
 			default:
-				logger.Info("Webserver success", fields...)
+				Logger.Info("Webserver success", fields...)
 			}
 
 			return nil
@@ -180,9 +206,9 @@ func recoverMiddleware() echo.MiddlewareFunc {
 			if r := recover(); r != nil {
 				err, ok := r.(error)
 				if !ok {
-					logger.Error("Webserver error", zap.Error(err), zap.Stack("stack"))
+					Logger.Error("Webserver error", zap.Error(err), zap.Stack("stack"))
 				} else {
-					logger.Error("Webserver error", zap.Error(err), zap.Stack("stack"))
+					Logger.Error("Webserver error", zap.Error(err), zap.Stack("stack"))
 					//emailErr := email.SendErrorEmail(
 					//	config.MailServer,
 					//	config.ServiceName,
@@ -227,13 +253,13 @@ func isAdminHandler(next echo.HandlerFunc) echo.HandlerFunc {
 
 func smsHandler(c echo.Context) error {
 
-	//logger.Info("Received sms", zap.Any("msg", data)
+	//Logger.Info("Received sms", zap.Any("msg", data)
 
 	bytes, _ := io.ReadAll(c.Request().Body)
 
-	logger.Info("data", zap.Any("data", bytes))
+	Logger.Info("data", zap.Any("data", bytes))
 
-	tValidator := tValidatorClient.NewRequestValidator(cnf.TwilioPass)
+	tValidator := tValidatorClient.NewRequestValidator(Cnf.TwilioPass)
 
 	signature := c.Request().Header.Get("X-Twilio-Signature")
 
@@ -259,12 +285,12 @@ func smsHandler(c echo.Context) error {
 	//	return err
 	//}
 
-	valid := tValidator.ValidateBody("https://"+cnf.UrlBasePath+"/sms", bytes, signature)
+	valid := tValidator.ValidateBody("https://"+Cnf.UrlBasePath+"/sms", bytes, signature)
 
-	logger.Info("Validation", zap.String("url", "https://"+cnf.UrlBasePath+"/sms"), zap.Bool("Validation", valid))
+	Logger.Info("Validation", zap.String("url", "https://"+Cnf.UrlBasePath+"/sms"), zap.Bool("Validation", valid))
 
 	if !valid {
-		logger.Error("Request failed twilio validation", zap.Error(err))
+		Logger.Error("Request failed twilio validation", zap.Error(err))
 	}
 
 	//blocks, err := getBlockedNumbers()
@@ -344,7 +370,7 @@ func voiceHandler(c echo.Context) error {
 func holdMusicHandler(c echo.Context) error {
 	fmt.Println("audio")
 
-	file, err := os.Open(cnf.HoldMusicPath)
+	file, err := os.Open(Cnf.HoldMusicPath)
 	if err != nil {
 		return err
 	}
@@ -371,7 +397,7 @@ func holdMusicHandler(c echo.Context) error {
 	return nil
 }
 
-func welcomeHandler(c echo.Context) error {
+/*func welcomeHandler(c echo.Context) error {
 	call := new(VoiceWebhook)
 	// Bind the request data to the struct
 	if err := c.Bind(call); err != nil {
@@ -446,7 +472,7 @@ func holdHandler(c echo.Context) error {
 
 	agents, err := readAgents()
 	if err != nil {
-		logger.Fatal("Failed to read agents", zap.Error(err))
+		Logger.Fatal("Failed to read agents", zap.Error(err))
 	}
 
 	for _, agent := range agents {
@@ -456,43 +482,7 @@ func holdHandler(c echo.Context) error {
 	}
 
 	return nil
-}
-
-func readCallsHandler(c echo.Context) error {
-	type readCallsInput struct {
-		Page  int `json:"page" validate:"required"`
-		Limit int `json:"limit" validate:"required"`
-	}
-
-	input := new(readCallsInput)
-	if err := c.Bind(input); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error":   "Invalid input format",
-		})
-	}
-
-	if err := c.Validate(input); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error":   "Validation failed: " + err.Error(),
-		})
-	}
-
-	calls, err := readCalls(input.Page, input.Limit)
-	if err != nil {
-		logger.Error("Failed to read calls", zap.Error(err))
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"success": false,
-			"error":   "Failed to read calls",
-		})
-	}
-
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"success": true,
-		"data":    calls,
-	})
-}
+}*/
 
 func connectAgentHandler(c echo.Context) error {
 	toNumber := c.QueryParam("toNumber")
@@ -613,7 +603,7 @@ func settingsHandler(c echo.Context) error {
 
 	allAgentData, err := readAgents()
 	if err != nil {
-		logger.Error("Failed to read agents", zap.Error(err))
+		Logger.Error("Failed to read agents", zap.Error(err))
 	}
 
 	type outputAgent struct {
@@ -645,7 +635,7 @@ func settingsHandler(c echo.Context) error {
 		"UnreadMessages": 2,
 	}
 
-	logger.Info("Settings", zap.Any("data", data))
+	Logger.Info("Settings", zap.Any("data", data))
 
 	return c.Render(http.StatusOK, "settings.html", data)
 }
@@ -656,7 +646,7 @@ func settingsHandler(c echo.Context) error {
 func smsLogHandler(c echo.Context) error {
 	phoneNumbers, err := readMessagedPhoneNumbers()
 	if err != nil {
-		logger.Error("Failed to read messaged phone numbers", zap.Error(err))
+		Logger.Error("Failed to read messaged phone numbers", zap.Error(err))
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
 			"success": false,
 			"error":   "Failed to read messaged phone numbers",
@@ -684,7 +674,7 @@ func smsLogHandler(c echo.Context) error {
 func readMessagedPhoneNumbersHandler(c echo.Context) error {
 	phoneNumbers, err := readMessagedPhoneNumbers()
 	if err != nil {
-		logger.Error("Failed to read messaged phone numbers", zap.Error(err))
+		Logger.Error("Failed to read messaged phone numbers", zap.Error(err))
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
 			"success": false,
 			"error":   "Failed to read messaged phone numbers",
@@ -697,9 +687,9 @@ func readMessagedPhoneNumbersHandler(c echo.Context) error {
 func readMessagesByPhoneNumberHandler(c echo.Context) error {
 	phoneNumber := c.FormValue("phoneNumber")
 	messages, err := readMessagesByPhoneNumber(phoneNumber)
-	logger.Info("Messages", zap.Any("messages", messages))
+	Logger.Info("Messages", zap.Any("messages", messages))
 	if err != nil {
-		logger.Error("Failed to read messages by phone number", zap.Error(err))
+		Logger.Error("Failed to read messages by phone number", zap.Error(err))
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
 			"success": false,
 			"error":   "Failed to read messages by phone number",
@@ -715,7 +705,7 @@ func sendMessageHandler(c echo.Context) error {
 
 	err := sendMessage(toNumber, message)
 	if err != nil {
-		logger.Error("Failed to send message to "+toNumber, zap.Error(err))
+		Logger.Error("Failed to send message to "+toNumber, zap.Error(err))
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
 			"success": false,
 			"error":   "Failed to send message to " + toNumber,
@@ -878,7 +868,7 @@ func loadTemplates() {
 		"toJSON": util.ToJSON,
 	}).ParseGlob("web/templates/*.html")
 	if err != nil {
-		logger.Fatal("Failed to parse templates", zap.Error(err))
+		Logger.Fatal("Failed to parse templates", zap.Error(err))
 	}
 
 	e.Renderer = &Template{
@@ -889,25 +879,25 @@ func loadTemplates() {
 func startLiveReloadWatcher() {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		logger.Fatal("Failed to create fsnotify watcher", zap.Error(err))
+		Logger.Fatal("Failed to create fsnotify watcher", zap.Error(err))
 	}
 	defer watcher.Close()
 
 	// Watch the directory containing your views
 	err = watcher.Add("web/templates")
 	if err != nil {
-		logger.Fatal("Failed to add fsnotify watcher", zap.Error(err))
+		Logger.Fatal("Failed to add fsnotify watcher", zap.Error(err))
 	}
 
 	for {
 		select {
 		case event := <-watcher.Events:
 			if event.Op&fsnotify.Write == fsnotify.Write {
-				logger.Info("Live reload triggered")
+				Logger.Info("Live reload triggered")
 				loadTemplates()
 			}
 		case err := <-watcher.Errors:
-			logger.Error("Error in fsnotify watcher", zap.Error(err))
+			Logger.Error("Error in fsnotify watcher", zap.Error(err))
 		}
 	}
 }

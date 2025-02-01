@@ -1,6 +1,7 @@
-package main
+package sms
 
 import (
+	"aidan/phone/internal/server"
 	"fmt"
 	"sort"
 	"time"
@@ -16,10 +17,10 @@ type Message struct {
 	SentDate string `db:"sentDate"`
 }
 
-func readAccountMessageHistory() error {
-	logger.Info("Reading account message history")
+func ReadAccountMessageHistory() error {
+	server.Logger.Info("Reading account message history")
 
-	messages, err := t.Api.ListMessage(&twilioApi.ListMessageParams{})
+	messages, err := server.T.Api.ListMessage(&twilioApi.ListMessageParams{})
 	if err != nil {
 		return err
 	}
@@ -27,13 +28,13 @@ func readAccountMessageHistory() error {
 	sort.Slice(messages, func(i, j int) bool {
 		createdDateI, errI := time.Parse(time.RFC1123Z, *messages[i].DateCreated)
 		if errI != nil {
-			logger.Sugar().Errorf("Error parsing created date for index %d:%w", i, errI)
+			server.Logger.Errorf("Error parsing created date for index %d:%w", i, errI)
 			return false
 		}
 
 		createdDateJ, errJ := time.Parse(time.RFC1123Z, *messages[j].DateCreated)
 		if errJ != nil {
-			logger.Sugar().Errorf("Error parsing created date for index %d:%w", j, errJ)
+			server.Logger.Errorf("Error parsing created date for index %d:%w", j, errJ)
 			return false
 		}
 
@@ -63,7 +64,7 @@ func readAccountMessageHistory() error {
 
 	}
 
-	logger.Info("Read account message history", zap.Int("NewMessages", insertedMessages))
+	server.Logger.Info("Read account message history", zap.Int("NewMessages", insertedMessages))
 
 	return nil
 }
@@ -72,7 +73,7 @@ func doesMessageExist(msgSid string) (bool, error) {
 	query := "SELECT COUNT(*) FROM sms WHERE messageSid = ?"
 
 	var count int
-	err := db.Get(&count, query, msgSid)
+	err := server.DB.Get(&count, query, msgSid)
 	if err != nil {
 		return false, fmt.Errorf("failed to check messageSid existence: %w", err)
 	}
@@ -105,7 +106,7 @@ func insertMessageLog(msg twilioApi.ApiV2010Message) error {
 		return fmt.Errorf("failed to parse created date: %w", err)
 	}
 
-	_, err = db.Exec(
+	_, err = server.DB.Exec(
 		query,
 		msg.From,
 		msg.To,
@@ -154,7 +155,7 @@ func readMessagedPhoneNumbers() ([]string, error) {
 	`
 
 	var phoneNumbers []string
-	err := db.Select(&phoneNumbers, query)
+	err := server.DB.Select(&phoneNumbers, query)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +180,7 @@ func readMessagesByPhoneNumber(phoneNumber string) ([]Message, error) {
 	`
 
 	var messages []Message
-	err := db.Select(&messages, query, phoneNumber, phoneNumber)
+	err := server.DB.Select(&messages, query, phoneNumber, phoneNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -190,19 +191,19 @@ func readMessagesByPhoneNumber(phoneNumber string) ([]Message, error) {
 func sendMessage(toNumber string, message string) error {
 	params := &twilioApi.CreateMessageParams{}
 	params.SetTo(toNumber)
-	params.SetFrom(cnf.PhoneNumber)
+	params.SetFrom(server.Cnf.PhoneNumber)
 	params.SetBody(message)
 
 	if message == "" {
 		return fmt.Errorf("message body cannot be empty")
 	}
 
-	resp, err := t.Api.CreateMessage(params)
+	resp, err := server.T.Api.CreateMessage(params)
 	if err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}
 
-	logger.Info("Sent message", zap.Any("response", resp))
+	server.Logger.Info("Sent message", zap.Any("response", resp))
 
 	return nil
 }

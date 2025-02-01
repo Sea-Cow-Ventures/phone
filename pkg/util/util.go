@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math"
 	"math/big"
 	"net/http"
@@ -17,13 +16,10 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"golang.org/x/crypto/bcrypt"
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-func CreateLogger(logDirPath string, fileName string) *zap.Logger {
+/*func CreateLogger(logDirPath string, fileName string) *zap.Logger {
 	stdout := zapcore.AddSync(os.Stdout)
 
 	//auto log rotate
@@ -52,31 +48,10 @@ func CreateLogger(logDirPath string, fileName string) *zap.Logger {
 	)
 
 	return zap.New(core)
-}
+}*/
 
 func GetWorkingDir() (string, error) {
 	return filepath.Abs(filepath.Dir(os.Args[0]))
-}
-
-// json formatted config loader, pass a config pointer
-func LoadConfig(path string, config interface{}) error {
-	configFile, err := os.Open(path)
-	if err != nil {
-		return fmt.Errorf("failed to open json config file: %w", err)
-	}
-	defer configFile.Close()
-
-	data, err := io.ReadAll(configFile)
-	if err != nil {
-		return fmt.Errorf("failed to read json config file: %w", err)
-	}
-
-	err = json.Unmarshal(data, config)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal json config file: %w", err)
-	}
-
-	return nil
 }
 
 func GetHostname() string {

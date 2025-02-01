@@ -1,22 +1,24 @@
 //go:build dev
 // +build dev
 
-package main
+package server
 
 import (
+	logger "aidan/phone/internal/log"
 	"context"
 	"net/http"
 
+	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 	"golang.ngrok.com/ngrok"
 	ngrokConfig "golang.ngrok.com/ngrok/config"
 )
 
-func initServer() {
-	go startWebserverInNgrokTunnel()
+func initServer(e *echo.Echo) {
+	go startWebserverInNgrokTunnel(e)
 }
 
-func startWebserverInNgrokTunnel() {
+func startWebserverInNgrokTunnel(e *echo.Echo) {
 	tun, err := ngrok.Listen(context.Background(),
 		ngrokConfig.HTTPEndpoint(
 			ngrokConfig.WithDomain(cnf.UrlBasePath),

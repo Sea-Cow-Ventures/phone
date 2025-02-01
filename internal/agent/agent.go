@@ -1,6 +1,7 @@
-package main
+package agent
 
 import (
+	"aidan/phone/internal/server"
 	"aidan/phone/pkg/util"
 	"fmt"
 	"sync"
@@ -26,9 +27,9 @@ type Login struct {
 	Password string `form:"Password" validate:"required"`
 }
 
-func readAgents() ([]Agent, error) {
+func ReadAgents() ([]Agent, error) {
 	agents := []Agent{}
-	err := db.Select(&agents, "SELECT id, name, number, priority, email, hashedPassword, isAdmin FROM agents ORDER BY id DESC")
+	err := server.DB.Select(&agents, "SELECT id, name, number, priority, email, hashedPassword, isAdmin FROM agents ORDER BY id DESC")
 	if err != nil {
 		return nil, err
 	}
@@ -36,9 +37,9 @@ func readAgents() ([]Agent, error) {
 	return agents, nil
 }
 
-func readAgentByName(name string) (*Agent, error) {
+func ReadAgentByName(name string) (*Agent, error) {
 	agent := &Agent{}
-	err := db.Get(agent, "SELECT id, name, number, priority, email, hashedPassword, isAdmin FROM agents WHERE name = ?", name)
+	err := server.DB.Get(agent, "SELECT id, name, number, priority, email, hashedPassword, isAdmin FROM agents WHERE name = ?", name)
 	if err != nil {
 		return nil, err
 	}
@@ -47,12 +48,12 @@ func readAgentByName(name string) (*Agent, error) {
 }
 
 func insertAgent(a *Agent) error {
-	_, err := db.Exec("INSERT INTO agents (name, HashedPassword, number, email, priority, isAdmin) VALUES (?, ?, ?, ?, ?, ?)",
+	_, err := server.DB.Exec("INSERT INTO agents (name, HashedPassword, number, email, priority, isAdmin) VALUES (?, ?, ?, ?, ?, ?)",
 		a.Username, a.HashedPassword, a.Number, a.Email, a.Priority, a.IsAdmin)
 	return err
 }
 
-func createDefaultAdmin() (*Agent, error) {
+func CreateDefaultAdmin() (*Agent, error) {
 	var admin = Agent{
 		Username: "admin",
 		Password: util.GenerateRandomString(8),
@@ -70,10 +71,10 @@ func createDefaultAdmin() (*Agent, error) {
 	return &admin, err
 }
 
-func createAgent(username, password, email, number string, isAdmin bool) {
+func CreateAgent(username, password, email, number string, isAdmin bool) {
 	hashedPassword, err := util.HashPassword(password)
 	if err != nil {
-		logger.Error("Failed to hash password", zap.Error(err))
+		server.Logger.Error("Failed to hash password", zap.Error(err))
 		return
 	}
 
@@ -87,42 +88,42 @@ func createAgent(username, password, email, number string, isAdmin bool) {
 	})
 }
 
-func removeAgent(id string) {
-	db.Exec("DELETE FROM agents WHERE id = ?", id)
+func RemoveAgent(id string) {
+	server.DB.Exec("DELETE FROM agents WHERE id = ?", id)
 }
 
-func editAgent(id, username, hashedPassword, email, number string, isAdmin bool) {
-	db.Exec("UPDATE agents SET name = ?, hashedPassword = ?, email = ?, number = ?, isAdmin = ? WHERE id = ?",
+func EditAgent(id, username, hashedPassword, email, number string, isAdmin bool) {
+	server.DB.Exec("UPDATE agents SET name = ?, hashedPassword = ?, email = ?, number = ?, isAdmin = ? WHERE id = ?",
 		username, hashedPassword, email, number, isAdmin, id)
 }
 
-func isAdmin(username string) (bool, error) {
+func IsAdmin(username string) (bool, error) {
 	var isAdmin bool
-	err := db.Get(&isAdmin, "SELECT isAdmin FROM agents WHERE name = ?", username)
+	err := server.DB.Get(&isAdmin, "SELECT isAdmin FROM agents WHERE name = ?", username)
 	if err != nil {
 		return false, err
 	}
 	return isAdmin, nil
 }
 
-func isLastAdmin(userID string) (bool, error) {
+func IsLastAdmin(userID string) (bool, error) {
 	var count int
-	err := db.Get(&count, "SELECT COUNT(*) FROM agents WHERE isAdmin = 1 AND id != ?", userID)
+	err := server.DB.Get(&count, "SELECT COUNT(*) FROM agents WHERE isAdmin = 1 AND id != ?", userID)
 	if err != nil {
 		return false, err
 	}
 	return count == 0, nil
 }
 
-func outboundAgentCall(to string) {
+func OutboundAgentCall(to string) {
 	params := &twilioApi.CreateCallParams{}
 	params.SetTo(to)
-	params.SetFrom(cnf.PhoneNumber)
-	params.SetUrl(cnf.UrlBasePath + "/connectAgent")
+	params.SetFrom(server.Cnf.PhoneNumber)
+	params.SetUrl(server.Cnf.UrlBasePath + "/connectAgent")
 	params.SetMachineDetection("Enable")
 
-	resp, err := t.Api.CreateCall(params)
-	logger.Info("Data", zap.Any("data", resp))
+	resp, err := server.T.Api.CreateCall(params)
+	server.Logger.Info("Data", zap.Any("data", resp))
 	if err != nil {
 		fmt.Println(err.Error())
 	} else {
