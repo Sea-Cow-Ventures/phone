@@ -2,7 +2,6 @@ package server
 
 import (
 	"aidan/phone/pkg/util"
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,12 +9,12 @@ import (
 	"net/url"
 	"os"
 	"text/template"
-	"time"
 
 	"aidan/phone/internal/config"
 	"aidan/phone/internal/database"
 	"aidan/phone/internal/log"
-	"aidan/phone/internal/server/call"
+	customMiddleware "aidan/phone/internal/middleware"
+	"aidan/phone/internal/models"
 	"aidan/phone/internal/twilioWrapper"
 
 	"github.com/fsnotify/fsnotify"
@@ -28,28 +27,8 @@ import (
 	"github.com/twilio/twilio-go"
 	"github.com/twilio/twilio-go/twiml"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"golang.org/x/crypto/bcrypt"
 )
-
-type Template struct {
-	templates *template.Template
-}
-
-func (t *Template) Render(w io.Writer, name string, data interface{}, c echo.Context) error {
-	return t.templates.ExecuteTemplate(w, name, data)
-}
-
-type CustomValidator struct {
-	validator *validator.Validate
-}
-
-func (cv *CustomValidator) Validate(i interface{}) error {
-	if err := cv.validator.Struct(i); err != nil {
-		return err
-	}
-	return nil
-}
 
 var (
 	Cnf    config.AppConfig
@@ -57,8 +36,6 @@ var (
 	DB     *sqlx.DB
 	T      *twilio.RestClient
 )
-
-var _ call.Logger = Logger
 
 func init() {
 	Cnf = config.GetConfig()
@@ -79,176 +56,17 @@ func Start() {
 	e.HideBanner = true
 	e.HidePort = true
 
-	e.Use(recoverMiddleware())
-	e.Use(loggerMiddleware())
+	e.Use(customMiddleware.Recover())
+	e.Use(customMiddleware.Log())
 	e.Use(middleware.CORS())
 	e.Use(middleware.RequestID())
 	e.Use(middleware.Gzip())
 	e.Use(middleware.Secure())
 	e.Use(middleware.BodyLimit("2M"))
-	e.Validator = &CustomValidator{validator: validator.New()}
+	e.Validator = &models.Validator{Validator: validator.New()}
 
 	// Define routes
-	e.Static("/static", "web/static")
-	e.GET("/", loginHandler)
-	e.GET("/login", loginHandler)
-	e.GET("/home", homeHandler, isLoggedInHandler)
-	e.GET("/calls", homeHandler, isLoggedInHandler)
-	e.POST("/readCalls", call.ReadCallsHandler, isLoggedInHandler)
-	e.GET("/smsLog", smsLogHandler, isLoggedInHandler)
-	e.GET("/readMessagedPhoneNumbers", readMessagedPhoneNumbersHandler, isLoggedInHandler)
-	e.POST("/sendMessage", sendMessageHandler, isLoggedInHandler)
-	e.POST("/addUser", addUserHandler, isLoggedInHandler, isAdminHandler)
-	e.POST("/removeUser", removeUserHandler, isLoggedInHandler, isAdminHandler)
-	e.POST("/editUser", editUserHandler, isLoggedInHandler, isAdminHandler)
-	e.POST("/readMessageHistory", readMessagesByPhoneNumberHandler, isLoggedInHandler)
-	e.POST("/signin", signinHandler)
-	e.GET("/logout", logoutHandler, isLoggedInHandler)
-	e.GET("/settings", settingsHandler, isLoggedInHandler, isAdminHandler)
-	e.POST("/sms", smsHandler)
-	e.POST("/voice", voiceHandler)
-	//e.POST("/welcome", welcomeHandler)
-	//e.POST("/hold", holdHandler)
-	e.POST("/connectAgent", connectAgentHandler)
-	e.GET("/holdMusic", holdMusicHandler)
-	e.POST("/dial", dialHandler, isLoggedInHandler)
-}
 
-type ErrorResponse struct {
-	Error   string `json:"error"`
-	Success bool   `json:"success"`
-}
-
-type SuccessResponse struct {
-	Data    interface{} `json:"data"`
-	Success bool        `json:"success"`
-}
-
-func loggerMiddleware() echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			start := time.Now()
-
-			err := next(c)
-			if err != nil {
-				c.Error(err)
-			}
-
-			req := c.Request()
-			res := c.Response()
-
-			fields := []zapcore.Field{
-				zap.String("request", fmt.Sprintf("%s %s", req.Method, req.RequestURI)),
-				zap.Int("status", res.Status),
-				zap.String("host", req.Host),
-				zap.String("remote_ip", c.RealIP()),
-				zap.String("user_agent", req.UserAgent()),
-				zap.String("latency", time.Since(start).String()),
-				zap.Int64("size", res.Size),
-			}
-
-			id := req.Header.Get(echo.HeaderXRequestID)
-			if id == "" {
-				id = res.Header().Get(echo.HeaderXRequestID)
-			}
-			fields = append(fields, zap.String("request_id", id))
-
-			n := res.Status
-			switch {
-			case n >= 500:
-				body, err := io.ReadAll(c.Request().Body)
-				if err != nil {
-					Logger.Error("Failed to read request body", zap.Error(err))
-					return err
-				}
-				c.Request().Body = io.NopCloser(bytes.NewReader(body))
-
-				fields = append(fields, zap.String("request_body", string(body)))
-				fields = append(fields, zap.Error(err))
-
-				Logger.With(zap.Error(err)).Error("Webserver error", fields...)
-				//emailErr := email.SendErrorEmail(
-				//	config.MailServer,
-				//	config.ServiceName,
-				//	err,
-				//	config.EmailRecipients,
-				//	config.EmailCC,
-				//	config.EmailBCC,
-				//	config.FromEmail,
-				//)
-				//if emailErr != nil {
-				//	logger.Error("Sending error email", zap.Error(emailErr))
-				//}
-			case n >= 400:
-				body, err := io.ReadAll(c.Request().Body)
-				if err != nil {
-					Logger.Error("Failed to read request body", zap.Error(err))
-					return err
-				}
-
-				fields = append(fields, zap.String("request_body", string(body)))
-
-				Logger.With(zap.Error(err)).Warn("Webserver client error", fields...)
-			case n >= 300:
-				Logger.Info("Webserver redirection", fields...)
-			default:
-				Logger.Info("Webserver success", fields...)
-			}
-
-			return nil
-		}
-	}
-}
-
-func recoverMiddleware() echo.MiddlewareFunc {
-	return func(next echo.HandlerFunc) echo.HandlerFunc {
-		return func(c echo.Context) error {
-			if r := recover(); r != nil {
-				err, ok := r.(error)
-				if !ok {
-					Logger.Error("Webserver error", zap.Error(err), zap.Stack("stack"))
-				} else {
-					Logger.Error("Webserver error", zap.Error(err), zap.Stack("stack"))
-					//emailErr := email.SendErrorEmail(
-					//	config.MailServer,
-					//	config.ServiceName,
-					//	err,
-					//	config.EmailRecipients,
-					//	config.EmailCC,
-					//	config.EmailBCC,
-					//	config.FromEmail,
-					//)
-					//if emailErr != nil {
-					//	logger.Error("Sending error email", zap.Error(emailErr))
-					//}
-
-					return c.JSON(http.StatusInternalServerError, ErrorResponse{err.Error(), false})
-				}
-			}
-			return next(c)
-		}
-	}
-}
-
-func isLoggedInHandler(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		_, found := util.ReadLoginCookie(c)
-		if !found {
-			return c.Redirect(http.StatusFound, "/login")
-		}
-		return next(c)
-	}
-}
-
-func isAdminHandler(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(c echo.Context) error {
-		username, _ := util.ReadLoginCookie(c)
-		userIsAdmin, err := isAdmin(username)
-		if !userIsAdmin || err != nil {
-			return c.Redirect(http.StatusFound, "/home")
-		}
-		return next(c)
-	}
 }
 
 func smsHandler(c echo.Context) error {

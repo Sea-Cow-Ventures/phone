@@ -4,28 +4,10 @@ import (
 	"aidan/phone/internal/server"
 	"aidan/phone/pkg/util"
 	"fmt"
-	"sync"
 
 	twilioApi "github.com/twilio/twilio-go/rest/api/v2010"
 	"go.uber.org/zap"
 )
-
-type Agent struct {
-	ID             int    `db:"id" json:"id"`
-	Username       string `db:"name" json:"name"`
-	Password       string
-	HashedPassword string `db:"hashedPassword" json:"hashedPassword"`
-	Number         string `db:"number" json:"number"`
-	Email          string `db:"email" json:"email"`
-	Priority       int    `db:"priority" json:"priority"`
-	IsAdmin        bool   `db:"isAdmin" json:"isAdmin"`
-	Busy           sync.Mutex
-}
-
-type Login struct {
-	Username string `db:"name" json:"name" form:"Username" validate:"required"`
-	Password string `form:"Password" validate:"required"`
-}
 
 func ReadAgents() ([]Agent, error) {
 	agents := []Agent{}
@@ -35,16 +17,6 @@ func ReadAgents() ([]Agent, error) {
 	}
 
 	return agents, nil
-}
-
-func ReadAgentByName(name string) (*Agent, error) {
-	agent := &Agent{}
-	err := server.DB.Get(agent, "SELECT id, name, number, priority, email, hashedPassword, isAdmin FROM agents WHERE name = ?", name)
-	if err != nil {
-		return nil, err
-	}
-
-	return agent, nil
 }
 
 func insertAgent(a *Agent) error {

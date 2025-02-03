@@ -19,14 +19,14 @@ var (
 func init() {
 	cnf = config.GetConfig()
 	logger = log.GetLogger()
-	t = twilio.NewRestClientWithParams(twilio.ClientParams{
-		Username: cnf.TwilioUser,
-		Password: cnf.TwilioPass,
-	})
+	t = Connect()
 }
 
 func Connect() *twilio.RestClient {
-	cnf := config.GetConfig()
+	t := twilio.NewRestClientWithParams(twilio.ClientParams{
+		Username: cnf.TwilioUser,
+		Password: cnf.TwilioPass,
+	})
 	createParams := &api.CreateIncomingPhoneNumberParams{}
 	createParams.SetPhoneNumber(cnf.PhoneNumber)
 	createParams.SetSmsUrl(cnf.UrlBasePath + "/sms")
@@ -41,6 +41,6 @@ func Connect() *twilio.RestClient {
 	return t
 }
 
-func GetClient() *twilio.RestClient {
+func GetTwilioClient() *twilio.RestClient {
 	return t
 }

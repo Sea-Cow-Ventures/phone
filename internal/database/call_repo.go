@@ -1,13 +1,10 @@
-package call
+package database
 
 import (
-	"aidan/phone/internal/server"
 	"fmt"
-	"sort"
 	"time"
 
 	twilioApi "github.com/twilio/twilio-go/rest/api/v2010"
-	"go.uber.org/zap"
 )
 
 type Call struct {
@@ -25,7 +22,7 @@ type CallResponse struct {
 	CurrentPage int    `json:"currentPage"`
 }
 
-func readCalls(page int, limit int) (CallResponse, error) {
+func ReadCalls(page int, limit int) (CallResponse, error) {
 	if page <= 0 {
 		page = 1
 	}
@@ -43,7 +40,7 @@ func readCalls(page int, limit int) (CallResponse, error) {
 		LEFT JOIN agents a ON c.toNumber = a.number 
 		WHERE NOT (c.direction = 'outbound-dial' AND a.number IS NOT NULL)`
 
-	err := server.DB.QueryRow(countQuery).Scan(&totalCalls)
+	err := db.QueryRow(countQuery).Scan(&totalCalls)
 	if err != nil {
 		return CallResponse{}, err
 	}
@@ -58,7 +55,7 @@ func readCalls(page int, limit int) (CallResponse, error) {
 		ORDER BY c.createdDate DESC 
 		LIMIT ? OFFSET ?`
 
-	rows, err := server.DB.Queryx(query, limit, offset)
+	rows, err := db.Queryx(query, limit, offset)
 	if err != nil {
 		return CallResponse{}, err
 	}
@@ -80,25 +77,25 @@ func readCalls(page int, limit int) (CallResponse, error) {
 	}, nil
 }
 
-func DialNumber(agentNumber string, toNumber string) error {
-	Logger.Info("message")
+/*func DialNumber(agentNumber string, toNumber string) error {
+	database.Logger.Info("message")
 	params := &twilioApi.CreateCallParams{}
 	params.SetTo(agentNumber)
-	params.SetFrom(server.Cnf.PhoneNumber)
-	params.SetUrl("https://" + server.Cnf.UrlBasePath + "/connectAgent?toNumber=" + toNumber)
+	params.SetFrom(database.Cnf.PhoneNumber)
+	params.SetUrl("https://" + database.Cnf.UrlBasePath + "/connectAgent?toNumber=" + toNumber)
 
 	resp, err := server.T.Api.CreateCall(params)
 	if err != nil {
-		server.Logger.Infof("Failed to initiate call: %v", err)
+		database.Logger.Infof("Failed to initiate call: %v", err)
 		return fmt.Errorf("failed to initiate call: %w", err)
 	}
 
-	server.Logger.Infof("Call initiated with SID: %s", *resp.Sid)
+	database.Logger.Infof("Call initiated with SID: %s", *resp.Sid)
 	return nil
-}
+}*/
 
-func ReadAccountCallHistory() error {
-	server.Logger.Info("Reading account call history")
+/*func ReadAccountCallHistory() error {
+	database.Logger.Info("Reading account call history")
 
 	calls, err := server.T.Api.ListCall(&twilioApi.ListCallParams{})
 	if err != nil {
@@ -126,21 +123,21 @@ func ReadAccountCallHistory() error {
 	for _, call := range calls {
 		exists, err := doesCallExist(*call.Sid)
 		if err != nil {
-			server.Logger.Errorf("Error reading messages: %w", zap.Error(err))
+			database.Logger.Errorf("Error reading messages: %w", zap.Error(err))
 		}
 		if !exists {
 			err = insertCall(call)
 			insertedCalls++
 		}
 		if err != nil {
-			server.Logger.Errorf("Error inserting message: %w", zap.Error(err))
+			database.Logger.Errorf("Error inserting message: %w", zap.Error(err))
 		}
 	}
 
-	server.Logger.Info("Read account call history", zap.Int("NewCalls", insertedCalls))
+	database.Logger.Info("Read account call history", zap.Int("NewCalls", insertedCalls))
 
 	return nil
-}
+}*/
 
 func insertCall(call twilioApi.ApiV2010Call) error {
 	query := `
@@ -169,7 +166,7 @@ func insertCall(call twilioApi.ApiV2010Call) error {
 		return fmt.Errorf("failed to parse created date: %w", err)
 	}
 
-	_, err = server.DB.Exec(
+	_, err = db.Exec(
 		query,
 		call.From,
 		call.To,
@@ -207,7 +204,7 @@ func doesCallExist(callSid string) (bool, error) {
 	query := "SELECT COUNT(*) FROM calls WHERE callSid = ?"
 
 	var count int
-	err := server.DB.Get(&count, query, callSid)
+	err := db.Get(&count, query, callSid)
 	if err != nil {
 		return false, fmt.Errorf("failed to check callSid existence: %w", err)
 	}
