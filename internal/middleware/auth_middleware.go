@@ -10,11 +10,11 @@ import (
 
 func EnsureLoggedIn(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		username, found := util.ReadLoginCookie(c)
+		name, found := util.ReadLoginCookie(c)
 		if !found {
 			return c.Redirect(http.StatusFound, "/login")
 		}
-		userExists, err := database.GetAgentByName(username)
+		userExists, err := database.GetAgentByName(name)
 		if userExists == nil || err != nil {
 			return c.Redirect(http.StatusFound, "/login")
 		}
@@ -25,8 +25,8 @@ func EnsureLoggedIn(next echo.HandlerFunc) echo.HandlerFunc {
 
 func EnsureAdmin(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
-		username, _ := util.ReadLoginCookie(c)
-		userIsAdmin, err := database.IsAdmin(username)
+		name, _ := util.ReadLoginCookie(c)
+		userIsAdmin, err := database.IsAdminByName(name)
 		if !userIsAdmin || err != nil {
 			return c.Redirect(http.StatusFound, "/home")
 		}

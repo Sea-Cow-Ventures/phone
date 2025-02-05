@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"aidan/phone/internal/database"
+	"aidan/phone/internal/service"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -42,4 +43,31 @@ func ReadCalls(c echo.Context) error {
 		"success": true,
 		"data":    calls,
 	})
+}
+
+func MainPage(c echo.Context) error {
+	cookie, err := c.Cookie("name")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Bad Cookie",
+		})
+	}
+
+	agent, err := service.GetAgentByName(cookie.Value)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"success": false,
+			"error":   "Bad Cookie",
+		})
+	}
+
+	data := map[string]interface{}{
+		"Name":           cookie.Value,
+		"IsAdmin":        agent.IsAdmin,
+		"MissedCalls":    1,
+		"UnreadMessages": 2,
+	}
+
+	return c.Render(http.StatusOK, "home.html", data)
 }

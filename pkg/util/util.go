@@ -152,7 +152,7 @@ func WriteLoginCookie(c echo.Context, name string) {
 }
 
 func ReadLoginCookie(c echo.Context) (string, bool) {
-	cookie, err := c.Cookie("username")
+	cookie, err := c.Cookie("name")
 	if err != nil {
 		return "", false
 	}

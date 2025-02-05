@@ -4,7 +4,7 @@ import "sync"
 
 type Agent struct {
 	ID             int    `db:"id" json:"id"`
-	Username       string `db:"name" json:"name"`
+	Name           string `db:"name" json:"name"`
 	Password       string
 	HashedPassword string `db:"hashedPassword" json:"hashedPassword"`
 	Number         string `db:"number" json:"number"`

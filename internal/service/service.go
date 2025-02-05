@@ -1,4 +1,4 @@
-package twilioWrapper
+package service
 
 import (
 	"aidan/phone/internal/config"
@@ -24,7 +24,7 @@ func init() {
 
 func Connect() *twilio.RestClient {
 	t := twilio.NewRestClientWithParams(twilio.ClientParams{
-		Username: cnf.TwilioUser,
+		Name:     cnf.TwilioUser,
 		Password: cnf.TwilioPass,
 	})
 	createParams := &api.CreateIncomingPhoneNumberParams{}

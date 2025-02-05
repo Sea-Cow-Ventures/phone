@@ -77,69 +77,7 @@ func ReadCalls(page int, limit int) (CallResponse, error) {
 	}, nil
 }
 
-/*func DialNumber(agentNumber string, toNumber string) error {
-	database.Logger.Info("message")
-	params := &twilioApi.CreateCallParams{}
-	params.SetTo(agentNumber)
-	params.SetFrom(database.Cnf.PhoneNumber)
-	params.SetUrl("https://" + database.Cnf.UrlBasePath + "/connectAgent?toNumber=" + toNumber)
-
-	resp, err := server.T.Api.CreateCall(params)
-	if err != nil {
-		database.Logger.Infof("Failed to initiate call: %v", err)
-		return fmt.Errorf("failed to initiate call: %w", err)
-	}
-
-	database.Logger.Infof("Call initiated with SID: %s", *resp.Sid)
-	return nil
-}*/
-
-/*func ReadAccountCallHistory() error {
-	database.Logger.Info("Reading account call history")
-
-	calls, err := server.T.Api.ListCall(&twilioApi.ListCallParams{})
-	if err != nil {
-		return err
-	}
-
-	sort.Slice(calls, func(i, j int) bool {
-		createdDateI, errI := time.Parse(time.RFC1123Z, *calls[i].DateCreated)
-		if errI != nil {
-			fmt.Println("Error parsing created date for index", i, ":", errI)
-			return false
-		}
-
-		createdDateJ, errJ := time.Parse(time.RFC1123Z, *calls[j].DateCreated)
-		if errJ != nil {
-			fmt.Println("Error parsing created date for index", j, ":", errJ)
-			return false
-		}
-
-		return createdDateI.Before(createdDateJ)
-	})
-
-	var insertedCalls int
-
-	for _, call := range calls {
-		exists, err := doesCallExist(*call.Sid)
-		if err != nil {
-			database.Logger.Errorf("Error reading messages: %w", zap.Error(err))
-		}
-		if !exists {
-			err = insertCall(call)
-			insertedCalls++
-		}
-		if err != nil {
-			database.Logger.Errorf("Error inserting message: %w", zap.Error(err))
-		}
-	}
-
-	database.Logger.Info("Read account call history", zap.Int("NewCalls", insertedCalls))
-
-	return nil
-}*/
-
-func insertCall(call twilioApi.ApiV2010Call) error {
+func InsertCall(call twilioApi.ApiV2010Call) error {
 	query := `
 		INSERT INTO calls (
 			fromNumber, toNumber, direction, updatedDate, price, uri,
@@ -200,7 +138,7 @@ func insertCall(call twilioApi.ApiV2010Call) error {
 	return nil
 }
 
-func doesCallExist(callSid string) (bool, error) {
+func DoesCallExist(callSid string) (bool, error) {
 	query := "SELECT COUNT(*) FROM calls WHERE callSid = ?"
 
 	var count int

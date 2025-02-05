@@ -15,7 +15,6 @@ import (
 	"aidan/phone/internal/log"
 	customMiddleware "aidan/phone/internal/middleware"
 	"aidan/phone/internal/models"
-	"aidan/phone/internal/twilioWrapper"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/go-playground/validator"
@@ -27,7 +26,6 @@ import (
 	"github.com/twilio/twilio-go"
 	"github.com/twilio/twilio-go/twiml"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var (
@@ -41,7 +39,6 @@ func init() {
 	Cnf = config.GetConfig()
 	Logger = log.GetLogger()
 	DB = database.GetDb()
-	T = twilioWrapper.Connect()
 }
 
 func Start() {
@@ -321,33 +318,6 @@ func connectAgentHandler(c echo.Context) error {
 	return c.String(http.StatusOK, twimlResult)
 }
 
-func homeHandler(c echo.Context) error {
-	cookie, err := c.Cookie("username")
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error":   "Bad Cookie",
-		})
-	}
-
-	agent, err := readAgentByName(cookie.Value)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error":   "Bad Cookie",
-		})
-	}
-
-	data := map[string]interface{}{
-		"Username":       cookie.Value,
-		"IsAdmin":        agent.IsAdmin,
-		"MissedCalls":    1,
-		"UnreadMessages": 2,
-	}
-
-	return c.Render(http.StatusOK, "home.html", data)
-}
-
 func dialHandler(c echo.Context) error {
 	type dialInput struct {
 		PhoneNumber string `json:"phoneNumber" validate:"required"`
@@ -368,7 +338,7 @@ func dialHandler(c echo.Context) error {
 		})
 	}
 
-	cookie, err := c.Cookie("username")
+	cookie, err := c.Cookie("name")
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{
 			"success": false,
@@ -380,7 +350,7 @@ func dialHandler(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{
 			"success": false,
-			"error":   "Bad Username",
+			"error":   "Bad Name",
 		})
 	}
 
@@ -393,69 +363,13 @@ func dialHandler(c echo.Context) error {
 
 func logoutHandler(c echo.Context) error {
 	cookie := new(http.Cookie)
-	cookie.Name = "username"
+	cookie.Name = "name"
 	cookie.Value = ""
 	cookie.Path = "/"
 	cookie.MaxAge = -1
 	c.SetCookie(cookie)
 
 	return c.Redirect(http.StatusFound, "/")
-}
-
-func settingsHandler(c echo.Context) error {
-	cookie, err := c.Cookie("username")
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error":   "Bad Cookie",
-		})
-	}
-
-	agent, err := readAgentByName(cookie.Value)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error":   "Bad Username",
-		})
-	}
-
-	allAgentData, err := readAgents()
-	if err != nil {
-		Logger.Error("Failed to read agents", zap.Error(err))
-	}
-
-	type outputAgent struct {
-		ID       int
-		Username string
-		Number   string
-		Email    string
-		IsAdmin  bool
-	}
-
-	agents := []outputAgent{}
-	for _, agent := range allAgentData {
-		agents = append(agents, outputAgent{
-			ID:       agent.ID,
-			Username: agent.Username,
-			Number:   agent.Number,
-			Email:    agent.Email,
-			IsAdmin:  agent.IsAdmin,
-		})
-	}
-
-	data := map[string]interface{}{
-		"Username":       agent.Username,
-		"PhoneNumber":    agent.Number,
-		"Email":          agent.Email,
-		"IsAdmin":        agent.IsAdmin,
-		"Agents":         agents,
-		"MissedCalls":    1,
-		"UnreadMessages": 2,
-	}
-
-	Logger.Info("Settings", zap.Any("data", data))
-
-	return c.Render(http.StatusOK, "settings.html", data)
 }
 
 //func notificationsHandler(c echo.Context) error {
@@ -471,7 +385,7 @@ func smsLogHandler(c echo.Context) error {
 		})
 	}
 
-	cookie, err := c.Cookie("username")
+	cookie, err := c.Cookie("name")
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{
 			"success": false,
@@ -481,7 +395,7 @@ func smsLogHandler(c echo.Context) error {
 
 	data := map[string]interface{}{
 		"Conversations":  phoneNumbers,
-		"Username":       cookie.Value,
+		"Name":           cookie.Value,
 		"MissedCalls":    1,
 		"UnreadMessages": 2,
 	}
@@ -517,27 +431,9 @@ func readMessagesByPhoneNumberHandler(c echo.Context) error {
 	return c.JSON(http.StatusOK, messages)
 }
 
-func sendMessageHandler(c echo.Context) error {
-	toNumber := c.FormValue("toNumber")
-	message := c.FormValue("message")
-
-	err := sendMessage(toNumber, message)
-	if err != nil {
-		Logger.Error("Failed to send message to "+toNumber, zap.Error(err))
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"success": false,
-			"error":   "Failed to send message to " + toNumber,
-		})
-	}
-
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"success": true,
-	})
-}
-
 func addUserHandler(c echo.Context) error {
 	type addUserInput struct {
-		Username string `json:"username" validate:"required"`
+		Name     string `json:"name" validate:"required"`
 		Password string `json:"password" validate:"required"`
 		Email    string `json:"email" validate:"required,email"`
 		Number   string `json:"number" validate:"required,e164"`
@@ -559,15 +455,15 @@ func addUserHandler(c echo.Context) error {
 		})
 	}
 
-	agent, err := readAgentByName(input.Username)
+	agent, err := readAgentByName(input.Name)
 	if agent != nil || err.Error() != "sql: no rows in result set" {
 		return c.JSON(http.StatusBadRequest, map[string]interface{}{
 			"success": false,
-			"error":   "Username already exists",
+			"error":   "Name already exists",
 		})
 	}
 
-	createAgent(input.Username, input.Password, input.Email, input.Number, input.IsAdmin == "true")
+	createAgent(input.Name, input.Password, input.Email, input.Number, input.IsAdmin == "true")
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"success": true,
@@ -577,7 +473,7 @@ func addUserHandler(c echo.Context) error {
 func editUserHandler(c echo.Context) error {
 	type addUserInput struct {
 		UserID   string `json:"userId" validate:"required"`
-		Username string `json:"username" validate:"required"`
+		Name     string `json:"name" validate:"required"`
 		Password string `json:"password" validate:"required"`
 		Email    string `json:"email" validate:"required,email"`
 		Number   string `json:"number" validate:"required,e164"`
@@ -600,84 +496,10 @@ func editUserHandler(c echo.Context) error {
 		})
 	}
 
-	editAgent(input.UserID, input.Username, hashedPassword, input.Email, input.Number, input.IsAdmin == "true")
+	editAgent(input.UserID, input.name, hashedPassword, input.Email, input.Number, input.IsAdmin == "true")
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"success": true,
-	})
-}
-
-func removeUserHandler(c echo.Context) error {
-	var data struct {
-		ID string `json:"id" validate:"required,numeric"`
-	}
-
-	if err := c.Bind(&data); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error":   "Invalid input format",
-		})
-	}
-
-	isLast, err := isLastAdmin(data.ID)
-	if isLast || err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"success": false,
-			"error":   "Cannot delete last admin user",
-		})
-	}
-
-	removeAgent(data.ID)
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"success": true,
-	})
-}
-
-func loginHandler(c echo.Context) error {
-	_, found := util.ReadLoginCookie(c)
-	if found {
-		return c.Redirect(http.StatusFound, "/home")
-	}
-	return c.Render(http.StatusOK, "login.html", nil)
-}
-
-func signinHandler(c echo.Context) error {
-	login := new(Login)
-	if err := c.Bind(login); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error":   "Invalid Request Data",
-		})
-	}
-
-	if err := c.Validate(login); err != nil {
-		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
-			"success": false,
-			"error":   "Unauthorized",
-		})
-	}
-
-	agent, err := readAgentByName(login.Username)
-	if err != nil {
-		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
-			"success": false,
-			"error":   "Unauthorized",
-		})
-	}
-
-	err = bcrypt.CompareHashAndPassword([]byte(agent.HashedPassword), []byte(login.Password))
-
-	if err == nil {
-		util.WriteLoginCookie(c, agent.Username)
-		return c.JSON(http.StatusOK, map[string]interface{}{
-			"success":     true,
-			"redirectURL": "/home",
-		})
-	}
-
-	return c.JSON(http.StatusUnauthorized, map[string]interface{}{
-		"success": false,
-		"error":   "Unauthorized",
 	})
 }
 
