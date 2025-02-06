@@ -53,7 +53,7 @@ func DeleteAgentById(id int) error {
 	return err
 }
 
-func UpdateAgentById(id, name, hashedPassword, email, number string, isAdmin bool) error {
+func UpdateAgentById(id int, name, hashedPassword, email, number string, isAdmin bool) error {
 	_, err := db.Exec("UPDATE agents SET name = ?, hashedPassword = ?, email = ?, number = ?, isAdmin = ? WHERE id = ?",
 		name, hashedPassword, email, number, isAdmin, id)
 	return err

@@ -71,12 +71,17 @@ func GetSettings(name string) (*models.Settings, error) {
 }
 
 func AddAgent(name, password, email, number string, isAdmin bool) error {
+	agent, err := database.GetAgentByName(name)
+	if agent != nil || err.Error() != "sql: no rows in result set" {
+		return errors.New("agent already exists")
+	}
+
 	hashedPassword, err := util.HashPassword(password)
 	if err != nil {
 		return err
 	}
 
-	database.InsertAgent(&models.Agent{
+	err = database.InsertAgent(&models.Agent{
 		Name:           name,
 		HashedPassword: hashedPassword,
 		Email:          email,
@@ -84,6 +89,8 @@ func AddAgent(name, password, email, number string, isAdmin bool) error {
 		Priority:       0,
 		IsAdmin:        isAdmin,
 	})
+
+	return err
 }
 
 func DeleteAgent(id int) error {
@@ -102,4 +109,25 @@ func DeleteAgent(id int) error {
 	}
 
 	return nil
+}
+
+func EditAgent(id int, name, password, email, number string, isAdmin bool) error {
+	agent, err := database.GetAgentByName(name)
+	if err != nil || agent.ID != id {
+		return errors.New("agent not found")
+	}
+
+	if agent.Name == name &&
+		agent.Email == email &&
+		agent.Number == number &&
+		agent.IsAdmin == isAdmin {
+		return nil
+	}
+
+	hashedPassword, err := util.HashPassword(password)
+	if err != nil {
+		return err
+	}
+
+	return database.UpdateAgentById(id, name, hashedPassword, email, number, isAdmin)
 }

@@ -81,3 +81,7 @@ func GetAccountMessageHistory() error {
 
 	return nil
 }
+
+func GetMessagedPhoneNumbers() ([]string, error) {
+	return database.GetMessagedPhoneNumbers()
+}

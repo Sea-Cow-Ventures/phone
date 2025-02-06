@@ -7,3 +7,4 @@ __debug*
 *.srl
 *.log
 /mysql
+/cmd/phone/config.json

@@ -47,3 +47,14 @@ func Login(c echo.Context) error {
 		})
 	}
 }
+
+func Logout(c echo.Context) error {
+	cookie := new(http.Cookie)
+	cookie.Name = "name"
+	cookie.Value = ""
+	cookie.Path = "/"
+	cookie.MaxAge = -1
+	c.SetCookie(cookie)
+
+	return c.Redirect(http.StatusFound, "/")
+}

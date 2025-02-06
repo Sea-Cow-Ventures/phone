@@ -74,7 +74,7 @@ func InsertMessageLog(msg api.ApiV2010Message) error {
 	return nil
 }
 
-func ReadMessagedPhoneNumbers() ([]string, error) {
+func GetMessagedPhoneNumbers() ([]string, error) {
 	query := `
 		SELECT phoneNumber
 		FROM (
@@ -102,7 +102,7 @@ func ReadMessagedPhoneNumbers() ([]string, error) {
 	return phoneNumbers, nil
 }
 
-func ReadMessagesByPhoneNumber(phoneNumber string) ([]models.Message, error) {
+func GetMessagesByPhoneNumber(phoneNumber string) ([]models.Message, error) {
 	query := `
 		SELECT 
 			fromNumber, 

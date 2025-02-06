@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"aidan/phone/internal/agent"
 	"aidan/phone/internal/config"
 	"aidan/phone/internal/log"
-	"aidan/phone/internal/server/call"
-	"aidan/phone/internal/sms"
+	"aidan/phone/internal/service"
 	"aidan/phone/pkg/util"
 
 	"go.uber.org/zap"
@@ -63,7 +61,7 @@ func init() {
 
 	//initMysql()
 
-	agents, err := agent.ReadAgents()
+	/*agents, err := agent.ReadAgents()
 	if err != nil {
 		logger.Fatal("Failed to read agents", zap.Error(err))
 	}
@@ -74,7 +72,7 @@ func init() {
 			logger.Fatal("Failed to create default admin", zap.Error(err))
 		}
 		logger.Info("Created default admin", zap.Any("details", admin))
-	}
+	}*/
 
 }
 
@@ -86,13 +84,13 @@ func main() {
 
 	for range ticker.C {
 		go func() {
-			if err := call.ReadAccountCallHistory(); err != nil {
+			if err := service.GetAccountCallHistory(); err != nil {
 				logger.Errorf("Error reading call history: %v", err)
 			}
 		}()
 
 		go func() {
-			if err := sms.ReadAccountMessageHistory(); err != nil {
+			if err := service.GetAccountMessageHistory(); err != nil {
 				logger.Errorf("Error reading message history: %v", err)
 			}
 		}()

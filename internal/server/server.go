@@ -2,13 +2,7 @@ package server
 
 import (
 	"aidan/phone/pkg/util"
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-	"net/url"
-	"os"
-	"text/template"
+	"html/template"
 
 	"aidan/phone/internal/config"
 	"aidan/phone/internal/database"
@@ -21,10 +15,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	tValidatorClient "github.com/twilio/twilio-go/client"
 
 	"github.com/twilio/twilio-go"
-	"github.com/twilio/twilio-go/twiml"
 	"go.uber.org/zap"
 )
 
@@ -46,9 +38,9 @@ func Start() {
 	initServer(e)
 
 	// Initial template loading
-	loadTemplates()
+	loadTemplates(e)
 
-	go startLiveReloadWatcher()
+	go startLiveReloadWatcher(e)
 
 	e.HideBanner = true
 	e.HidePort = true
@@ -66,7 +58,7 @@ func Start() {
 
 }
 
-func smsHandler(c echo.Context) error {
+/*func smsHandler(c echo.Context) error {
 
 	//Logger.Info("Received sms", zap.Any("msg", data)
 
@@ -131,9 +123,9 @@ func smsHandler(c echo.Context) error {
 		c.String(http.StatusOK, twimlResult)
 	}
 	return nil
-}
+}*/
 
-func voiceHandler(c echo.Context) error {
+/*func voiceHandler(c echo.Context) error {
 	//play := &twiml.VoicePlay{
 	//	Url: tunnel + "/testAudio",
 	//}
@@ -160,7 +152,7 @@ func voiceHandler(c echo.Context) error {
 		Name: "Voice Stream Handler",
 		Url:  "wss://fully-lenient-grouse.ngrok-free.app/voiceStream",
 	}
-	*/
+
 
 	twimlResult, err := twiml.Voice(voiceBody)
 	if err != nil {
@@ -179,7 +171,7 @@ func voiceHandler(c echo.Context) error {
 	   c.String(http.StatusOK, fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?><Response><Connect><Stream name="Voice Stream" url="wss://fully-lenient-grouse.ngrok-free.app/voiceStream" /></Connect></Response>`))
 
 	   return nil
-	*/
+
 }
 
 func holdMusicHandler(c echo.Context) error {
@@ -212,7 +204,7 @@ func holdMusicHandler(c echo.Context) error {
 	return nil
 }
 
-/*func welcomeHandler(c echo.Context) error {
+func welcomeHandler(c echo.Context) error {
 	call := new(VoiceWebhook)
 	// Bind the request data to the struct
 	if err := c.Bind(call); err != nil {
@@ -299,211 +291,10 @@ func holdHandler(c echo.Context) error {
 	return nil
 }*/
 
-func connectAgentHandler(c echo.Context) error {
-	toNumber := c.QueryParam("toNumber")
-	if toNumber == "" {
-		return c.String(http.StatusBadRequest, "Missing 'toNumber' parameter")
-	}
+// func notificationsHandler(c echo.Context) error {
+// }
 
-	voiceBody := []twiml.Element{
-		twiml.VoiceDial{Number: toNumber},
-	}
-
-	twimlResult, err := twiml.Voice(voiceBody)
-	if err != nil {
-		return c.String(http.StatusInternalServerError, err.Error())
-	}
-
-	c.Response().Header().Set("Content-Type", "text/xml")
-	return c.String(http.StatusOK, twimlResult)
-}
-
-func dialHandler(c echo.Context) error {
-	type dialInput struct {
-		PhoneNumber string `json:"phoneNumber" validate:"required"`
-	}
-	input := new(dialInput)
-
-	if err := c.Bind(&input); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error":   "Invalid input format",
-		})
-	}
-
-	if err := c.Validate(input); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error":   "Validation failed: " + err.Error(),
-		})
-	}
-
-	cookie, err := c.Cookie("name")
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error":   "Bad Cookie",
-		})
-	}
-
-	agent, err := readAgentByName(cookie.Value)
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error":   "Bad Name",
-		})
-	}
-
-	dialNumber(agent.Number, input.PhoneNumber)
-
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"success": true,
-	})
-}
-
-func logoutHandler(c echo.Context) error {
-	cookie := new(http.Cookie)
-	cookie.Name = "name"
-	cookie.Value = ""
-	cookie.Path = "/"
-	cookie.MaxAge = -1
-	c.SetCookie(cookie)
-
-	return c.Redirect(http.StatusFound, "/")
-}
-
-//func notificationsHandler(c echo.Context) error {
-//}
-
-func smsLogHandler(c echo.Context) error {
-	phoneNumbers, err := readMessagedPhoneNumbers()
-	if err != nil {
-		Logger.Error("Failed to read messaged phone numbers", zap.Error(err))
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"success": false,
-			"error":   "Failed to read messaged phone numbers",
-		})
-	}
-
-	cookie, err := c.Cookie("name")
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error":   "Bad Cookie",
-		})
-	}
-
-	data := map[string]interface{}{
-		"Conversations":  phoneNumbers,
-		"Name":           cookie.Value,
-		"MissedCalls":    1,
-		"UnreadMessages": 2,
-	}
-
-	return c.Render(http.StatusOK, "smsLog.html", data)
-}
-
-func readMessagedPhoneNumbersHandler(c echo.Context) error {
-	phoneNumbers, err := readMessagedPhoneNumbers()
-	if err != nil {
-		Logger.Error("Failed to read messaged phone numbers", zap.Error(err))
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"success": false,
-			"error":   "Failed to read messaged phone numbers",
-		})
-	}
-
-	return c.JSON(http.StatusOK, phoneNumbers)
-}
-
-func readMessagesByPhoneNumberHandler(c echo.Context) error {
-	phoneNumber := c.FormValue("phoneNumber")
-	messages, err := readMessagesByPhoneNumber(phoneNumber)
-	Logger.Info("Messages", zap.Any("messages", messages))
-	if err != nil {
-		Logger.Error("Failed to read messages by phone number", zap.Error(err))
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"success": false,
-			"error":   "Failed to read messages by phone number",
-		})
-	}
-
-	return c.JSON(http.StatusOK, messages)
-}
-
-func addUserHandler(c echo.Context) error {
-	type addUserInput struct {
-		Name     string `json:"name" validate:"required"`
-		Password string `json:"password" validate:"required"`
-		Email    string `json:"email" validate:"required,email"`
-		Number   string `json:"number" validate:"required,e164"`
-		IsAdmin  string `json:"isAdmin"`
-	}
-
-	input := new(addUserInput)
-	if err := c.Bind(input); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error":   "Invalid input format",
-		})
-	}
-
-	if err := c.Validate(input); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error":   "Validation failed: " + err.Error(),
-		})
-	}
-
-	agent, err := readAgentByName(input.Name)
-	if agent != nil || err.Error() != "sql: no rows in result set" {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error":   "Name already exists",
-		})
-	}
-
-	createAgent(input.Name, input.Password, input.Email, input.Number, input.IsAdmin == "true")
-
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"success": true,
-	})
-}
-
-func editUserHandler(c echo.Context) error {
-	type addUserInput struct {
-		UserID   string `json:"userId" validate:"required"`
-		Name     string `json:"name" validate:"required"`
-		Password string `json:"password" validate:"required"`
-		Email    string `json:"email" validate:"required,email"`
-		Number   string `json:"number" validate:"required,e164"`
-		IsAdmin  string `json:"isAdmin"`
-	}
-
-	input := new(addUserInput)
-	if err := c.Bind(input); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error":   "Invalid input format",
-		})
-	}
-
-	hashedPassword, err := util.HashPassword(input.Password)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
-			"success": false,
-			"error":   "Failed to hash password",
-		})
-	}
-
-	editAgent(input.UserID, input.name, hashedPassword, input.Email, input.Number, input.IsAdmin == "true")
-
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"success": true,
-	})
-}
-
-func loadTemplates() {
+func loadTemplates(e *echo.Echo) {
 	parsedTemplates, err := template.New("").Funcs(template.FuncMap{
 		"toJSON": util.ToJSON,
 	}).ParseGlob("web/templates/*.html")
@@ -511,12 +302,12 @@ func loadTemplates() {
 		Logger.Fatal("Failed to parse templates", zap.Error(err))
 	}
 
-	e.Renderer = &Template{
-		templates: parsedTemplates,
+	e.Renderer = &models.Template{
+		Templates: parsedTemplates,
 	}
 }
 
-func startLiveReloadWatcher() {
+func startLiveReloadWatcher(e *echo.Echo) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		Logger.Fatal("Failed to create fsnotify watcher", zap.Error(err))
@@ -534,7 +325,7 @@ func startLiveReloadWatcher() {
 		case event := <-watcher.Events:
 			if event.Op&fsnotify.Write == fsnotify.Write {
 				Logger.Info("Live reload triggered")
-				loadTemplates()
+				loadTemplates(e)
 			}
 		case err := <-watcher.Errors:
 			Logger.Error("Error in fsnotify watcher", zap.Error(err))

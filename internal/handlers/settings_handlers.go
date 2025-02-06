@@ -3,6 +3,7 @@ package handlers
 import (
 	"aidan/phone/internal/models"
 	"aidan/phone/internal/service"
+	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -64,7 +65,7 @@ func RemoveAgent(c echo.Context) error {
 }
 
 func AddAgent(c echo.Context) error {
-	type input struct {
+	var input struct {
 		Name     string `json:"name" validate:"required"`
 		Password string `json:"password" validate:"required"`
 		Email    string `json:"email" validate:"required,email"`
@@ -79,24 +80,59 @@ func AddAgent(c echo.Context) error {
 		})
 	}
 
-	if err := c.Validate(input); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error":   "Validation failed: " + err.Error(),
+	if err := c.Validate(&input); err != nil {
+		return c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "Validation failed: " + err.Error(),
+			Success: false,
 		})
 	}
 
-	agent, err := readAgentByName(input.Name)
-	if agent != nil || err.Error() != "sql: no rows in result set" {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"success": false,
-			"error":   "Name already exists",
+	err := service.AddAgent(input.Name, input.Password, input.Email, input.Number, input.IsAdmin == "true")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   fmt.Errorf("failed to add agent: %w", err).Error(),
+			Success: false,
 		})
 	}
 
-	createAgent(input.Name, input.Password, input.Email, input.Number, input.IsAdmin == "true")
+	return c.JSON(http.StatusOK, models.SuccessResponse{
+		Success: true,
+	})
+}
 
-	return c.JSON(http.StatusOK, map[string]interface{}{
-		"success": true,
+func EditAgent(c echo.Context) error {
+	var input struct {
+		ID       int    `json:"id" validate:"required"`
+		Name     string `json:"name" validate:"required"`
+		Password string `json:"password" validate:"required"`
+		Email    string `json:"email" validate:"required,email"`
+		Number   string `json:"number" validate:"required,e164"`
+		IsAdmin  string `json:"isAdmin"`
+	}
+
+	if err := c.Bind(&input); err != nil {
+		return c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "Invalid input format",
+			Success: false,
+		})
+	}
+
+	if err := c.Validate(&input); err != nil {
+		return c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "Validation failed: " + err.Error(),
+			Success: false,
+		})
+	}
+
+	err := service.EditAgent(input.ID, input.Name, input.Password, input.Email, input.Number, input.IsAdmin == "true")
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   fmt.Errorf("failed to edit agent: %w", err).Error(),
+			Success: false,
+		})
+	}
+
+	return c.JSON(http.StatusOK, models.SuccessResponse{
+		Success: true,
 	})
 }

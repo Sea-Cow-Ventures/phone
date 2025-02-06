@@ -1,6 +1,7 @@
 package config
 
 import (
+	"aidan/phone/pkg/util"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -53,5 +54,16 @@ func LoadConfig(path string) error {
 }
 
 func GetConfig() AppConfig {
+	if cnf.Env == "" && cnf.TwilioUser == "" {
+		workingDir, err := util.GetWorkingDir()
+		if err != nil {
+			panic(fmt.Errorf("unable to get working dir: %w", err))
+		}
+
+		err = LoadConfig(workingDir + "/config.json")
+		if err != nil {
+			panic(fmt.Errorf("failed to load config: %w", err))
+		}
+	}
 	return cnf
 }

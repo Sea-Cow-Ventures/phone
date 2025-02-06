@@ -9,26 +9,11 @@ import (
 
 	"aidan/phone/internal/database"
 	"fmt"
+
+	"github.com/twilio/twilio-go/twiml"
 )
 
-func DialNumber(agentNumber string, toNumber string) error {
-	logger.Info("message")
-	params := &api.CreateCallParams{}
-	params.SetTo(agentNumber)
-	params.SetFrom(cnf.PhoneNumber)
-	params.SetUrl("https://" + cnf.UrlBasePath + "/connectAgent?toNumber=" + toNumber)
-
-	resp, err := t.Api.CreateCall(params)
-	if err != nil {
-		logger.Infof("Failed to initiate call: %v", err)
-		return fmt.Errorf("failed to initiate call: %w", err)
-	}
-
-	logger.Infof("Call initiated with SID: %s", *resp.Sid)
-	return nil
-}
-
-func ReadAccountCallHistory() error {
+func GetAccountCallHistory() error {
 	logger.Info("Reading account call history")
 
 	calls, err := t.Api.ListCall(&api.ListCallParams{})
@@ -71,6 +56,39 @@ func ReadAccountCallHistory() error {
 	logger.Info("Read account call history", zap.Int("NewCalls", insertedCalls))
 
 	return nil
+}
+
+func DialPhone(toPhoneNumber, agentName string) error {
+	agent, err := database.GetAgentByName(agentName)
+	if err != nil {
+		return fmt.Errorf("error reading agent: %w", err)
+	}
+
+	params := &api.CreateCallParams{}
+	params.SetTo(agent.Number)
+	params.SetFrom(cnf.PhoneNumber)
+	params.SetUrl("https://" + cnf.UrlBasePath + "/connectAgent?toNumber=" + toPhoneNumber)
+
+	resp, err := t.Api.CreateCall(params)
+	if err != nil {
+		return fmt.Errorf("failed to initiate call: %w", err)
+	}
+
+	logger.Infof("Call initiated with SID: %s", *resp.Sid)
+	return nil
+}
+
+func ConnectAgent(toNumber string) (string, error) {
+	voiceBody := []twiml.Element{
+		twiml.VoiceDial{Number: toNumber},
+	}
+
+	twimlResult, err := twiml.Voice(voiceBody)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate twiml: %w", err)
+	}
+
+	return twimlResult, nil
 }
 
 func OutboundAgentCall(to string) {
