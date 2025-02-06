@@ -17,18 +17,6 @@ func Recover() echo.MiddlewareFunc {
 					logger.Error("Webserver error", zap.Error(err), zap.Stack("stack"))
 				} else {
 					logger.Error("Webserver error", zap.Error(err), zap.Stack("stack"))
-					//emailErr := email.SendErrorEmail(
-					//	config.MailServer,
-					//	config.ServiceName,
-					//	err,
-					//	config.EmailRecipients,
-					//	config.EmailCC,
-					//	config.EmailBCC,
-					//	config.FromEmail,
-					//)
-					//if emailErr != nil {
-					//	logger.Error("Sending error email", zap.Error(emailErr))
-					//}
 
 					return c.JSON(http.StatusInternalServerError, models.ErrorResponse{Error: err.Error(), Success: false})
 				}

@@ -14,18 +14,16 @@ import (
 var (
 	cnf    config.AppConfig
 	t      *twilio.RestClient
-	logger *zap.SugaredLogger
+	logger *zap.Logger
 )
 
 func init() {
 	var err error
 	cnf = config.GetConfig()
-	temp := cnf.TwilioUser
-	fmt.Println("temp", temp)
 	logger = log.GetLogger()
 	t, err = ConnectTwilio()
 	if err != nil {
-		//logger.Fatal("Unable to connect to twilio", zap.Error(err))
+		logger.Fatal("Unable to connect to twilio", zap.Error(err))
 	}
 }
 
@@ -35,8 +33,6 @@ func ConnectTwilio() (*twilio.RestClient, error) {
 		Password: cnf.TwilioPass,
 	})
 
-	fmt.Println("cnf", cnf.TwilioUser, cnf.TwilioPass)
-	//logger.Info("cnf", zap.Any("cnf", cnf))
 	createParams := &api.CreateIncomingPhoneNumberParams{}
 	createParams.SetPhoneNumber(cnf.PhoneNumber)
 	createParams.SetSmsUrl(cnf.UrlBasePath + "/sms")
@@ -44,7 +40,7 @@ func ConnectTwilio() (*twilio.RestClient, error) {
 
 	resp, err := t.Api.CreateIncomingPhoneNumber(createParams)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to create twilio phone number", err)
+		return nil, fmt.Errorf("Unable to create twilio phone number %w", err)
 	}
 
 	logger.Info("Connected to twilio", zap.String("phoneNumber", cnf.PhoneNumber), zap.Any("twilioResponse", resp))

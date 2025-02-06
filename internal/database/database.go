@@ -13,15 +13,13 @@ import (
 var (
 	Cnf    config.AppConfig
 	db     *sqlx.DB
-	Logger *zap.SugaredLogger
+	Logger *zap.Logger
 )
 
 func init() {
 	Cnf = config.GetConfig()
 	Logger = log.GetLogger()
-}
 
-func InitMysql() {
 	mCnf := mysql.Config{
 		User:                 Cnf.DBUser,
 		Passwd:               Cnf.DBPass,

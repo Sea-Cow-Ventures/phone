@@ -42,14 +42,14 @@ func GetAccountCallHistory() error {
 	for _, call := range calls {
 		exists, err := database.DoesCallExist(*call.Sid)
 		if err != nil {
-			logger.Errorf("Error reading messages: %w", zap.Error(err))
+			logger.Sugar().Errorf("Error reading messages: %w", zap.Error(err))
 		}
 		if !exists {
 			err = database.InsertCall(call)
 			insertedCalls++
 		}
 		if err != nil {
-			logger.Errorf("Error inserting message: %w", zap.Error(err))
+			logger.Sugar().Errorf("Error inserting message: %w", zap.Error(err))
 		}
 	}
 
@@ -74,7 +74,7 @@ func DialPhone(toPhoneNumber, agentName string) error {
 		return fmt.Errorf("failed to initiate call: %w", err)
 	}
 
-	logger.Infof("Call initiated with SID: %s", *resp.Sid)
+	logger.Sugar().Infof("Call initiated with SID: %s", *resp.Sid)
 	return nil
 }
 

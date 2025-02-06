@@ -6,7 +6,7 @@ import (
 	"go.uber.org/zap"
 )
 
-var logger *zap.SugaredLogger
+var logger *zap.Logger
 
 func init() {
 	logger = log.GetLogger()

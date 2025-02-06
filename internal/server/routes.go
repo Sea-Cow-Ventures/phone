@@ -8,7 +8,11 @@ import (
 )
 
 func RegisterRoutes(e *echo.Echo) {
-	e.Static("/static", "web/static")
+	e.Static("/static", cnf.WebDir+"/static")
+	e.Static("/static/images", cnf.WebDir+"/static/images")
+	e.Static("/static/css", cnf.WebDir+"/static/css")
+	e.Static("/static/js", cnf.WebDir+"/static/js")
+
 	e.GET("/", handlers.LoginPage)
 	e.GET("/login", handlers.LoginPage)
 	e.GET("/home", handlers.MainPage, middleware.EnsureLoggedIn)

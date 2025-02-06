@@ -50,22 +50,7 @@ func Log() echo.MiddlewareFunc {
 				}
 				c.Request().Body = io.NopCloser(bytes.NewReader(body))
 
-				fields = append(fields, zap.String("request_body", string(body)))
-				fields = append(fields, zap.Error(err))
-
-				logger.Errorw("Webserver error", fields)
-				//emailErr := email.SendErrorEmail(
-				//	config.MailServer,
-				//	config.ServiceName,
-				//	err,
-				//	config.EmailRecipients,
-				//	config.EmailCC,
-				//	config.EmailBCC,
-				//	config.FromEmail,
-				//)
-				//if emailErr != nil {
-				//	logger.Error("Sending error email", zap.Error(emailErr))
-				//}
+				logger.Error("Webserver error", fields...)
 			case n >= 400:
 				body, err := io.ReadAll(c.Request().Body)
 				if err != nil {
@@ -73,13 +58,15 @@ func Log() echo.MiddlewareFunc {
 					return err
 				}
 
-				fields = append(fields, zap.String("request_body", string(body)))
+				if len(body) > 0 {
+					fields = append(fields, zap.String("request_body", string(body)))
+				}
 
-				logger.Warnw("Webserver client error", fields)
+				logger.Warn("Webserver client error", fields...)
 			case n >= 300:
-				logger.Infow("Webserver redirection", fields)
+				logger.Info("Webserver redirection", fields...)
 			default:
-				logger.Infow("Webserver success", fields)
+				logger.Info("Webserver success", fields...)
 			}
 
 			return nil

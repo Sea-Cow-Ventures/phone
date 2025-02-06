@@ -2,6 +2,8 @@
 package log
 
 import (
+	"aidan/phone/pkg/util"
+	"fmt"
 	"os"
 
 	"go.uber.org/zap"
@@ -9,14 +11,20 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-var logger *zap.SugaredLogger
+var logger *zap.Logger
 
-func Init(logDirPath string, fileName string) {
+func init() {
+	var err error
+	workingDir, err := util.GetWorkingDir()
+	if err != nil {
+		panic(fmt.Errorf("unable to get working dir: %w", err))
+	}
+
 	stdout := zapcore.AddSync(os.Stdout)
 
 	//auto log rotate
 	file := zapcore.AddSync(&lumberjack.Logger{
-		Filename:   logDirPath + "/" + fileName,
+		Filename:   workingDir + "/" + "phone.log",
 		MaxSize:    10, // megabytes
 		MaxBackups: 3,
 		MaxAge:     30, // days
@@ -40,9 +48,9 @@ func Init(logDirPath string, fileName string) {
 	)
 
 	l := zap.New(core)
-	logger = l.Sugar()
+	logger = l
 }
 
-func GetLogger() *zap.SugaredLogger {
+func GetLogger() *zap.Logger {
 	return logger
 }

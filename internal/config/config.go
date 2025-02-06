@@ -1,7 +1,6 @@
 package config
 
 import (
-	"aidan/phone/pkg/util"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -16,7 +15,7 @@ type AppConfig struct {
 	UrlBasePath     string   `json:"urlBasePath"`
 	ListenPort      string   `json:"listenPort"`
 	PhoneNumber     string   `json:"phoneNumber"`
-	HoldMusicPath   string   `json:"holdMusicPath"`
+	WebDir          string   `json:"webDir"`
 	MailServer      string   `json:"MailServer"`
 	EmailRecipients []string `json:"EmailRecipients"`
 
@@ -30,40 +29,28 @@ type AppConfig struct {
 
 var cnf AppConfig
 
-func LoadConfig(path string) error {
-	configFile, err := os.Open(path)
+func init() {
+	configFile, err := os.Open("config.json")
 	if err != nil {
-		return fmt.Errorf("failed to open json config file: %w", err)
+		panic(fmt.Errorf("failed to open json config file: %w", err))
 	}
 	defer configFile.Close()
 
 	data, err := io.ReadAll(configFile)
 	if err != nil {
-		return fmt.Errorf("failed to read json config file: %w", err)
+		panic(fmt.Errorf("failed to read json config file: %w", err))
 	}
 
 	var config AppConfig
 
-	err = json.Unmarshal(data, config)
+	err = json.Unmarshal(data, &config)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal json config file: %w", err)
+		panic(fmt.Errorf("failed to unmarshal json config file: %w", err))
 	}
 
 	cnf = config
-	return nil
 }
 
 func GetConfig() AppConfig {
-	if cnf.Env == "" && cnf.TwilioUser == "" {
-		workingDir, err := util.GetWorkingDir()
-		if err != nil {
-			panic(fmt.Errorf("unable to get working dir: %w", err))
-		}
-
-		err = LoadConfig(workingDir + "/config.json")
-		if err != nil {
-			panic(fmt.Errorf("failed to load config: %w", err))
-		}
-	}
 	return cnf
 }

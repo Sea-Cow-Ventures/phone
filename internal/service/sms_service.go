@@ -41,13 +41,13 @@ func GetAccountMessageHistory() error {
 	sort.Slice(messages, func(i, j int) bool {
 		createdDateI, errI := time.Parse(time.RFC1123Z, *messages[i].DateCreated)
 		if errI != nil {
-			logger.Errorf("Error parsing created date for index %d:%w", i, errI)
+			logger.Sugar().Errorf("Error parsing created date for index %d:%w", i, errI)
 			return false
 		}
 
 		createdDateJ, errJ := time.Parse(time.RFC1123Z, *messages[j].DateCreated)
 		if errJ != nil {
-			logger.Errorf("Error parsing created date for index %d:%w", j, errJ)
+			logger.Sugar().Errorf("Error parsing created date for index %d:%w", j, errJ)
 			return false
 		}
 
