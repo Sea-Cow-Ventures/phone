@@ -18,6 +18,7 @@ func RegisterRoutes(e *echo.Echo) {
 	e.GET("/home", handlers.MainPage, middleware.EnsureLoggedIn)
 	e.GET("/calls", handlers.MainPage, middleware.EnsureLoggedIn)
 	e.POST("/readCalls", handlers.ReadCalls, middleware.EnsureLoggedIn)
+	e.POST("/markCallHandled", handlers.MarkCallHandled, middleware.EnsureLoggedIn)
 	e.GET("/sms", handlers.SmsPage, middleware.EnsureLoggedIn)
 	e.GET("/readMesages", handlers.ReadMessages, middleware.EnsureLoggedIn)
 	e.POST("/sendMessage", handlers.SendMessage, middleware.EnsureLoggedIn)

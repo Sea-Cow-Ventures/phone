@@ -16,10 +16,8 @@ func LoginPage(c echo.Context) error {
 	}
 
 	data := map[string]interface{}{
-		"MissedCalls":    0, // Add default value for header template
-		"UnreadMessages": 0, // Add default value for header template
-		"Title":          "Login",
-		"User":           nil, // Add nil user for header template
+		"Title": "Login",
+		"Name":  nil,
 	}
 
 	return c.Render(http.StatusOK, "login.html", data)

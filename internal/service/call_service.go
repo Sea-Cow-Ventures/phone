@@ -108,3 +108,11 @@ func OutboundAgentCall(to string) {
 		fmt.Println("Call Direction: " + *resp.Direction)
 	}
 }
+
+func MarkCallHandled(callSid string) error {
+	err := database.MarkCallHandled(callSid)
+	if err != nil {
+		return fmt.Errorf("error marking call as handled: %w", err)
+	}
+	return nil
+}

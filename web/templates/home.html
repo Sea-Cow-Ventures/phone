@@ -1,21 +1,43 @@
 {{ template "header.html" . }}
+<link rel="stylesheet" href="/static/css/home.css">
 <style>
-	#notificationModal {
-		display: none;
-		position: fixed;
-		top: 0;
-		left: 0;
-		width: 100%;
-		height: 100%;
-		background-color: rgba(0, 0, 0, 0.8);
-		z-index: 1000;
-		justify-content: center;
-		align-items: center;
+	.name-cell {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
-	button:disabled {
-		background-color: #cbd5e0; /* Tailwind's bg-gray-400 */
-		cursor: not-allowed;
-		opacity: 0.6;
+
+	@media (max-width: 640px) {
+		.name-cell.text-wrap {
+			font-size: 0.65rem;
+			white-space: normal;
+			line-height: 1.1;
+		}
+		#callHistoryTable td {
+			padding-top: 1.25rem;
+			padding-bottom: 1.25rem;
+			height: 75px;
+			box-sizing: border-box;
+		}
+		#callHistoryTable th {
+			height: 30px;
+			box-sizing: border-box;
+		}
+		#callHistoryTable {
+			width: 100%;
+			table-layout: fixed;
+		}
+		#callHistoryTable th:nth-child(1) { width: 18%; }
+		#callHistoryTable th:nth-child(2) { width: 8%; }
+		#callHistoryTable th:nth-child(3) { width: 22%; }
+		#callHistoryTable th:nth-child(4) { width: 26%; }
+		#callHistoryTable th:nth-child(5) { width: 26%; }
+		
+		#callHistoryTable td:nth-child(1) { width: 18%; }
+		#callHistoryTable td:nth-child(2) { width: 8%; }
+		#callHistoryTable td:nth-child(3) { width: 22%; }
+		#callHistoryTable td:nth-child(4) { width: 26%; }
+		#callHistoryTable td:nth-child(5) { width: 26%; }
 	}
 </style>
 <body class="bg-gray-100">
@@ -29,39 +51,62 @@
 
 	{{ template "menu.html" . }}
 
-	<div class="container mx-auto mt-8">
-		<div class="call-history w-full p-4">
-			<h2 class="text-2xl font-semibold mb-4"><i class="fas fa-history mr-2"></i>Call History</h2>
-			<div class="flex justify-between items-center mb-4">
-				<div class="flex items-center space-x-2">
-					<button id="prevPage" class="bg-blue-500 text-white px-4 py-2 rounded-md disabled:bg-blue-500" disabled>
-						<i class="fas fa-arrow-left mr-2"></i>Previous
+	<div class="container mx-auto mt-4 sm:mt-8 px-0 sm:px-2">
+		<div class="call-history w-full p-0 sm:p-4">
+			<h2 class="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4 px-2 sm:px-0"><i class="fas fa-history mr-2"></i>Call History</h2>
+			<div class="flex justify-between items-center mb-2 sm:mb-4 px-2 sm:px-0">
+				<div class="flex flex-wrap items-center gap-1 sm:gap-2">
+					<button id="prevPage" class="text-xs sm:text-sm bg-blue-500 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-md transition-colors duration-200 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-500" disabled>
+						<i class="fas fa-arrow-left mr-1 sm:mr-2"></i>Prev
 					</button>
-					<button id="nextPage" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600">
-						<i class="fas fa-arrow-right mr-2"></i>Next
+					<button id="nextPage" class="text-xs sm:text-sm bg-blue-500 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-md transition-colors duration-200 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-500">
+						<i class="fas fa-arrow-right mr-1 sm:mr-2"></i>Next
 					</button>
-					<button id="callBackButton" class="bg-green-500 text-white px-4 py-2 rounded-md disabled:bg-green-500" disabled>
-						<img src="/static/images/call-return.svg" class="inline-block w-5 h-5 mr-2" style="filter: invert(1) brightness(2) contrast(2);">Call Back
+					<button id="callBackButton" class="text-xs sm:text-sm bg-green-500 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-md transition-colors duration-200 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-500 whitespace-nowrap" disabled>
+						<img src="/static/images/call-return.svg" alt="" class="inline-block w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" style="filter: invert(1) brightness(2) contrast(2);">
+						<span class="hidden sm:inline">Call Back</span>
+						<span class="inline sm:hidden">Call</span>
 					</button>
-					<button id="openDialerButton" style="background-color: #EFBC9B;" class="text-white px-4 py-2 rounded-md hover:bg-blue-600">
-						<i class="fas fa-phone-square mr-2"></i>Dialer
+					<button id="markHandledButton" class="text-xs sm:text-sm bg-yellow-500 text-white px-2 sm:px-4 py-1 sm:py-2 rounded-md transition-colors duration-200 hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-yellow-500 whitespace-nowrap" disabled>
+						<i class="fas fa-check mr-1 sm:mr-2"></i>
+						<span class="hidden sm:inline">Mark Handled</span>
+						<span class="inline sm:hidden">Mark</span>
+					</button>
+					<button id="openDialerButton" class="text-xs sm:text-sm bg-[#EFBC9B] text-white px-2 sm:px-4 py-1 sm:py-2 rounded-md transition-colors duration-200 hover:bg-[#d1a174] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[#efbc9b]">
+						<i class="fas fa-phone-square mr-1 sm:mr-2"></i>Dial
 					</button>
 				</div>
 			</div>
-			<table class="min-w-full bg-white rounded-md border border-gray-300 shadow-md" id="callHistoryTable">
-				<thead style="background-color: #F5D7B8;">
-					<tr>
-						<th class="py-2 text-center w-1/5 border border-gray-300">Date</th>
-						<th class="py-2 text-center w-1/6 border border-gray-300">Direction</th>
-						<th class="py-2 text-center w-1/5 border border-gray-300">Number</th>
-						<th class="py-2 text-center w-1/5 border border-gray-300">Caller Name</th>
-						<th class="py-2 text-center w-1/5 border border-gray-300">Handled By</th>
-					</tr>
-				</thead>
-				<tbody>
-					<!-- Call data will be populated here -->
-				</tbody>
-			</table>
+			<div class="overflow-x-auto">
+				<table class="w-full bg-white border border-gray-300 shadow-none sm:shadow-md text-sm sm:text-base table-fixed" id="callHistoryTable">
+					<colgroup>
+						<col style="width: 18%">
+						<col style="width: 8%">
+						<col style="width: 22%">
+						<col style="width: 26%">
+						<col style="width: 26%">
+					</colgroup>
+					<thead style="background-color: #F5D7B8;">
+						<tr>
+							<th class="py-1 sm:py-2 px-1 sm:px-4 text-center border border-gray-300 text-xs sm:text-base">Date</th>
+							<th class="py-1 sm:py-2 px-1 sm:px-4 text-center border border-gray-300 text-xs sm:text-base">Dir</th>
+							<th class="py-1 sm:py-2 px-1 sm:px-4 text-center border border-gray-300 text-xs sm:text-base">Number</th>
+							<th class="py-1 sm:py-2 px-1 sm:px-4 text-center border border-gray-300 text-xs sm:text-base">Name</th>
+							<th class="py-1 sm:py-2 px-1 sm:px-4 text-center border border-gray-300 text-xs sm:text-base">Agent</th>
+						</tr>
+					</thead>
+					<tbody>
+						<!-- Call data will be populated here -->
+						<tr class="hover:bg-gray-100 transition-colors duration-150 cursor-pointer">
+							<td class="border px-1 sm:px-4 py-1 sm:py-2 text-center text-xs sm:text-base"></td>
+							<td class="border px-1 sm:px-4 py-1 sm:py-2 text-center text-xs sm:text-base"></td>
+							<td class="border px-1 sm:px-4 py-1 sm:py-2 text-center text-xs sm:text-base"></td>
+							<td class="border px-1 sm:px-4 py-1 sm:py-2 text-center text-xs sm:text-base name-cell"></td>
+							<td class="border px-1 sm:px-4 py-1 sm:py-2 text-center text-xs sm:text-base"></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
 		</div>
 
 		<div class="flex justify-center mt-2">
@@ -94,6 +139,26 @@
 				<button class="p-2 bg-gray-300 text-gray-700 rounded-md dtmf-button">#</button>
 			</div>
 			<button id="callButton" class="w-full py-2 bg-green-500 text-white rounded-md" disabled>Call</button>
+		</div>
+	</div>
+
+	<div id="markHandledModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center hidden">
+		<div class="bg-white p-8 rounded-md shadow-md relative w-96">
+			<button id="closeMarkHandledModal" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700 text-2xl p-2">
+				&times;
+			</button>
+			<h2 class="text-2xl font-semibold mb-6">By which Agent?</h2>
+			<div class="mb-6">
+				<select id="agentSelect" class="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+					<option value="">Select an agent...</option>
+					<option value="Aidan">Aidan</option>
+					<option value="Kathy">Kathy</option>
+					<option value="Zach">Zach</option>
+				</select>
+			</div>
+			<button id="confirmMarkHandled" class="w-full bg-yellow-500 text-white px-4 py-2 rounded-md transition-colors duration-200 hover:bg-yellow-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-yellow-500" disabled>
+				Mark Handled
+			</button>
 		</div>
 	</div>
 
@@ -290,19 +355,106 @@
 		});
 
 		let currentPage = 1;
-		const callsPerPage = 10;
+		let callsPerPage = 10;
+		let lastViewportHeight = window.innerHeight;
 
-		let selectedCallNumber = null;
+		function calculateRowsPerPage() {
+			const viewportHeight = window.innerHeight;
+			const tableHeaderHeight = window.innerWidth < 640 ? 30 : 40;
+			const rowHeight = window.innerWidth < 640 ? 75 : 53; // Increased to 75px for mobile
+			const paginationHeight = window.innerWidth < 640 ? 30 : 40;
+			const menuAndButtonsHeight = window.innerWidth < 640 ? 120 : 200;
+			
+			const availableHeight = viewportHeight - menuAndButtonsHeight - paginationHeight;
+			const maxRows = Math.floor((availableHeight - tableHeaderHeight) / rowHeight);
+			
+			return Math.max(5, Math.min(30, maxRows));
+		}
+
+		function updateRowsAndRefetch() {
+			const currentViewportHeight = window.innerHeight;
+			if (Math.abs(currentViewportHeight - lastViewportHeight) > 50) {
+				lastViewportHeight = currentViewportHeight;
+				const newRowsPerPage = calculateRowsPerPage();
+				if (newRowsPerPage !== callsPerPage) {
+					callsPerPage = newRowsPerPage;
+					fetchCallData(1);
+				}
+			}
+		}
+
+		let resizeTimeout;
+		window.addEventListener('resize', () => {
+			if (resizeTimeout) {
+				clearTimeout(resizeTimeout);
+			}
+			resizeTimeout = setTimeout(() => {
+				updateRowsAndRefetch();
+			}, 500);
+		});
+
+		document.addEventListener('DOMContentLoaded', () => {
+			callsPerPage = calculateRowsPerPage();
+			fetchCallData(1);
+
+			document.getElementById('prevPage').addEventListener('click', () => {
+				if (currentPage > 1) {
+					currentPage--;
+					fetchCallData(currentPage);
+				}
+			});
+
+			document.getElementById('nextPage').addEventListener('click', () => {
+				currentPage++;
+				fetchCallData(currentPage);
+			});
+
+			document.getElementById('callBackButton').addEventListener('click', () => {
+				if (selectedCallNumber) {
+					dialerModal.classList.remove('hidden');
+					phoneNumberInput.value =  selectedCallNumber.replace(/^\+/, '');;
+				}
+			});
+
+			document.getElementById('markHandledButton').addEventListener('click', () => {
+				if (selectedCallId) {
+					markHandledModal.classList.remove('hidden');
+				}
+			});
+		});
+
+		let selectedCallId = null;
 		let selectedRow = null;
 
-		function selectCall(callNumber, rowElement) {
+		function selectCall(callId, callNumber, rowElement) {
 			if (selectedRow) {
 				selectedRow.classList.remove('bg-blue-200');
 			}
 			selectedRow = rowElement;
 			selectedRow.classList.add('bg-blue-200');
+			selectedCallId = callId;
 			selectedCallNumber = callNumber;
 			document.getElementById('callBackButton').disabled = false;
+			document.getElementById('markHandledButton').disabled = false;
+		}
+
+		function checkNameCellOverflow() {
+			const nameCells = document.querySelectorAll('.name-cell');
+			nameCells.forEach(cell => {
+				if (!cell.dataset.originalText) {
+					cell.dataset.originalText = cell.textContent;
+				}
+				
+				cell.textContent = cell.dataset.originalText;
+				cell.classList.remove('text-wrap');
+				const row = cell.closest('tr');
+				row.classList.remove('has-wrapped-name');
+				
+				if (cell.scrollWidth > cell.clientWidth) {
+					cell.classList.add('text-wrap');
+					row.classList.add('has-wrapped-name');
+				}
+			});
 		}
 
 		function fetchCallData(page) {
@@ -338,19 +490,25 @@
 						const displayNumber = call.Direction === 'inbound' ? call.From : call.To;
 
 						const row = document.createElement('tr');
+						row.className = 'hover:bg-gray-100 transition-colors duration-150 cursor-pointer';
 						row.innerHTML = `
-							<td class="border px-4 py-2 text-center">${formattedDate}</td>
-							<td class="border px-4 py-2 text-center">
+							<td class="border px-1 sm:px-4 py-1 sm:py-2 text-center text-xs sm:text-base w-[18%]">${formattedDate}</td>
+							<td class="border px-1 sm:px-4 py-1 sm:py-2 text-center text-xs sm:text-base w-[8%]">
 								<div class="flex items-center justify-center">
 									<img src="${iconSrc}" alt="Call direction" class="w-5 h-5" style="filter: ${call.Direction === 'inbound' ? 'invert(18%) sepia(98%) saturate(7075%) hue-rotate(356deg) brightness(98%) contrast(113%)' : 'invert(56%) sepia(64%) saturate(435%) hue-rotate(93deg) brightness(95%) contrast(91%)'}" />
 								</div>
 							</td>
-							<td class="border px-4 py-2 text-center">${displayNumber}</td>
-							<td class="border px-4 py-2 text-center">${call.CallerName}</td>
-							<td class="border px-4 py-2 text-center">${call.AnsweredBy}</td>
+							<td class="border px-1 sm:px-4 py-1 sm:py-2 text-center text-xs sm:text-base w-[22%]">${displayNumber}</td>
+							<td class="border px-1 sm:px-4 py-1 sm:py-2 text-center text-xs sm:text-base w-[26%] name-cell">${call.CallerName}</td>
+							<td class="border px-1 sm:px-4 py-1 sm:py-2 text-center text-xs sm:text-base w-[26%]">${call.AnsweredBy}</td>
 						`;
-						row.addEventListener('click', () => selectCall(displayNumber, row));
+						row.addEventListener('click', () => selectCall(call.ID, displayNumber, row));
 						callHistoryTableBody.appendChild(row);
+
+						const nameCell = row.querySelector('.name-cell');
+						if (nameCell) {
+							checkNameCellOverflow();
+						}
 					});
 
 					document.getElementById('currentPage').textContent = data.data.currentPage;
@@ -373,30 +531,8 @@
 			const selectedRows = document.querySelector('#callHistoryTable tbody').querySelectorAll('.bg-blue-200');
 			selectedRows.forEach(row => row.classList.remove('bg-blue-200'));
 			document.getElementById('callBackButton').disabled = true;
+			document.getElementById('markHandledButton').disabled = true;
 		}
-
-		document.addEventListener('DOMContentLoaded', () => {
-			fetchCallData(currentPage);
-
-			document.getElementById('prevPage').addEventListener('click', () => {
-				if (currentPage > 1) {
-					currentPage--;
-					fetchCallData(currentPage);
-				}
-			});
-
-			document.getElementById('nextPage').addEventListener('click', () => {
-				currentPage++;
-				fetchCallData(currentPage);
-			});
-
-			document.getElementById('callBackButton').addEventListener('click', () => {
-				if (selectedCallNumber) {
-					dialerModal.classList.remove('hidden');
-					phoneNumberInput.value =  selectedCallNumber.replace(/^\+/, '');;
-				}
-			});
-		});
 
 		const dialerModal = document.getElementById('dialerModal');
 		const openDialerButton = document.getElementById('openDialerButton');
@@ -448,29 +584,74 @@
 			});
 		});
 
-		document.addEventListener('DOMContentLoaded', () => {
-			const prevPageButton = document.getElementById('prevPage');
-			const nextPageButton = document.getElementById('nextPage');
-			const callBackButton = document.getElementById('callBackButton');
-			const openDialerButton = document.getElementById('openDialerButton');
+		const markHandledModal = document.getElementById('markHandledModal');
+		const closeMarkHandledModal = document.getElementById('closeMarkHandledModal');
+		const agentSelect = document.getElementById('agentSelect');
+		const confirmMarkHandled = document.getElementById('confirmMarkHandled');
 
-			function enableButton(button) {
-				button.disabled = false;
-				button.classList.add('hover:bg-blue-600');
+		document.getElementById('markHandledButton').addEventListener('click', () => {
+			if (selectedCallId) {
+				markHandledModal.classList.remove('hidden');
 			}
+		});
 
-			function disableButton(button) {
-				button.disabled = true;
-				button.classList.remove('hover:bg-blue-600');
+		closeMarkHandledModal.addEventListener('click', () => {
+			markHandledModal.classList.add('hidden');
+			agentSelect.value = '';
+			confirmMarkHandled.disabled = true;
+		});
+
+		agentSelect.addEventListener('change', () => {
+			confirmMarkHandled.disabled = !agentSelect.value;
+		});
+
+		confirmMarkHandled.addEventListener('click', () => {
+			const agentName = agentSelect.value;
+			if (selectedCallId && agentName) {
+				fetch('/markCallHandled', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({ 
+						callId: selectedCallId,
+						agent: agentName
+					})
+				})
+				.then(response => response.json())
+				.then(data => {
+					if (data.success) {
+						markHandledModal.classList.add('hidden');
+						agentSelect.value = '';
+						confirmMarkHandled.disabled = true;
+						fetchCallData(currentPage);
+					} else {
+						alert('Failed to mark call as handled.');
+					}
+				})
+				.catch(error => {
+					console.error('Error:', error);
+					alert('An error occurred while trying to mark the call as handled.');
+				});
 			}
+		});
 
-			// Example usage
-			nextPageButton.addEventListener('click', () => {
-				// Logic to go to the next page
-				enableButton(prevPageButton); // Enable previous button
-			});
+		// Close modal when clicking outside
+		markHandledModal.addEventListener('click', (e) => {
+			if (e.target === markHandledModal) {
+				markHandledModal.classList.add('hidden');
+				agentSelect.value = '';
+				confirmMarkHandled.disabled = true;
+			}
+		});
 
-			// Add similar logic for other buttons as needed
+		// Add resize observer to check for text wrapping
+		const resizeObserver = new ResizeObserver(entries => {
+			checkNameCellOverflow();
+		});
+
+		document.querySelectorAll('.name-cell').forEach(cell => {
+			resizeObserver.observe(cell);
 		});
 	</script>
 </body>
