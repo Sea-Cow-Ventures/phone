@@ -5,6 +5,8 @@ import (
 	"context"
 	"html/template"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"aidan/phone/internal/config"
 	"aidan/phone/internal/log"
@@ -101,16 +103,24 @@ func startLiveReloadWatcher(e *echo.Echo) {
 	}
 	defer watcher.Close()
 
-	err = watcher.Add(cnf.WebDir)
+	err = filepath.Walk(cnf.WebDir+"/templates", func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return watcher.Add(path)
+		}
+		return nil
+	})
 	if err != nil {
-		logger.Fatal("Failed to add fsnotify watcher", zap.Error(err))
+		logger.Fatal("Failed to add template directories to watcher", zap.Error(err))
 	}
 
 	for {
 		select {
 		case event := <-watcher.Events:
-			if event.Op&fsnotify.Write == fsnotify.Write {
-				logger.Info("Live reload triggered")
+			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Remove) != 0 {
+				logger.Info("Template change detected", zap.String("file", event.Name))
 				loadTemplates(e)
 			}
 		case err := <-watcher.Errors:

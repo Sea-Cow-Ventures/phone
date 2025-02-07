@@ -6,6 +6,8 @@ import (
 	"aidan/phone/internal/log"
 	"aidan/phone/internal/server"
 	"aidan/phone/internal/service"
+
+	"go.uber.org/zap"
 )
 
 type VoiceMessage struct {
@@ -21,14 +23,21 @@ type MediaFormat struct {
 	Payload   string `json:"payload"`
 }
 
-//var inQueue int
-
 func main() {
 	logger := log.GetLogger()
 
 	server.Start()
 
 	logger.Info("Ready")
+
+	if adminCount, err := service.GetAdminCount(); err != nil || adminCount == 0 {
+		logger.Info("Creating default admin agent")
+		admin, err := service.CreateDefaultAdmin()
+		if err != nil {
+			logger.Fatal("Error creating default admin agent", zap.Error(err))
+		}
+		logger.Info("Default admin agent created", zap.Any("admin", admin))
+	}
 
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()

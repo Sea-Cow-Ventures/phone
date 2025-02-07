@@ -44,6 +44,10 @@ func CreateDefaultAdmin() (*models.Agent, error) {
 	return &admin, err
 }
 
+func GetAdminCount() (int, error) {
+	return database.GetAdminCount()
+}
+
 func GetAgentByName(name string) (*models.Agent, error) {
 	return database.GetAgentByName(name)
 }

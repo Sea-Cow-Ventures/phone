@@ -22,6 +22,15 @@ func IsLastAdminById(id int) (bool, error) {
 	return count == 0, nil
 }
 
+func GetAdminCount() (int, error) {
+	var count int
+	err := db.Get(&count, "SELECT COUNT(*) FROM agents WHERE isAdmin = 1")
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
 func GetAgentByName(name string) (*models.Agent, error) {
 	agent := &models.Agent{}
 	err := db.Get(agent, "SELECT id, name, number, priority, email, hashedPassword, isAdmin FROM agents WHERE name = ?", name)

@@ -142,7 +142,7 @@ func HashPassword(password string) (string, error) {
 
 func WriteLoginCookie(c echo.Context, name string) {
 	cookie := new(http.Cookie)
-	cookie.Name = "username"
+	cookie.Name = "name"
 	cookie.Value = name
 	cookie.Expires = time.Now().Add(30 * 24 * time.Hour)
 	cookie.Secure = true

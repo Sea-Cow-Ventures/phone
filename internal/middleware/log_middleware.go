@@ -16,9 +16,9 @@ func Log() echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			start := time.Now()
 
-			err := next(c)
-			if err != nil {
-				c.Error(err)
+			serverErr := next(c)
+			if serverErr != nil {
+				c.Error(serverErr)
 			}
 
 			req := c.Request()
@@ -40,28 +40,23 @@ func Log() echo.MiddlewareFunc {
 			}
 			fields = append(fields, zap.String("request_id", id))
 
+			body, err := io.ReadAll(c.Request().Body)
+			if err != nil {
+				logger.Error("Failed to read request body", zap.Error(err))
+				return err
+			}
+			c.Request().Body = io.NopCloser(bytes.NewReader(body))
+
+			if len(body) > 0 {
+				fields = append(fields, zap.String("request_body", string(body)))
+			}
+
 			n := res.Status
 			switch {
 			case n >= 500:
-				body, err := io.ReadAll(c.Request().Body)
-				if err != nil {
-					logger.Error("Failed to read request body", zap.Error(err))
-					return err
-				}
-				c.Request().Body = io.NopCloser(bytes.NewReader(body))
-
+				fields = append(fields, zap.Error(serverErr))
 				logger.Error("Webserver error", fields...)
 			case n >= 400:
-				body, err := io.ReadAll(c.Request().Body)
-				if err != nil {
-					logger.Error("Failed to read request body", zap.Error(err))
-					return err
-				}
-
-				if len(body) > 0 {
-					fields = append(fields, zap.String("request_body", string(body)))
-				}
-
 				logger.Warn("Webserver client error", fields...)
 			case n >= 300:
 				logger.Info("Webserver redirection", fields...)

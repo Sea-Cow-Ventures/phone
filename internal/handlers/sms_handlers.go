@@ -26,14 +26,23 @@ func SmsPage(c echo.Context) error {
 		})
 	}
 
+	agent, err := service.GetAgentByName(cookie.Value)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Success: false,
+			Error:   "Bad Cookie",
+		})
+	}
+
 	data := map[string]interface{}{
 		"Conversations":  phoneNumbers,
 		"Name":           cookie.Value,
+		"IsAdmin":        agent.IsAdmin,
 		"MissedCalls":    1,
 		"UnreadMessages": 2,
 	}
 
-	return c.Render(http.StatusOK, "smsLog.html", data)
+	return c.Render(http.StatusOK, "sms.html", data)
 }
 
 func SendMessage(c echo.Context) error {
