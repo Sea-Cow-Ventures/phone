@@ -6,6 +6,6 @@ COPY phone /app/
 COPY web /app/web
 
 RUN chmod +x /app/phone
-EXPOSE4 443
+EXPOSE 443
 
 CMD ["/app/phone"]

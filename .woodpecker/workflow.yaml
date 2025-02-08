@@ -12,7 +12,6 @@ steps:
       - go mod tidy
       - cd cmd/phone
       - go build -o ../../phone
-      - ls -la
 
   - name: build-docker
     image: docker:24.0.5
