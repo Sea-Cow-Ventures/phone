@@ -37,5 +37,7 @@ func RegisterRoutes(e *echo.Echo) {
 	e.POST("/connectAgent", handlers.ConnectAgent)
 	e.POST("/dial", handlers.DialPhone, middleware.EnsureLoggedIn)
 	e.POST("/voice", handlers.Voice)
+	e.POST("/voice/record", handlers.VoiceRecord)
 	e.POST("/fail", handlers.Fail)
+	e.POST("/voice/finishRecording", handlers.FinishRecording)
 }

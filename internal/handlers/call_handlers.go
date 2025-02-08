@@ -4,6 +4,7 @@ import (
 	"aidan/phone/internal/database"
 	"aidan/phone/internal/models"
 	"aidan/phone/internal/service"
+	"log"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -168,40 +169,24 @@ func Voice(c echo.Context) error {
 
 	var response []twiml.Element
 
-	//if call.Digits == "1" {
 	response = []twiml.Element{
 		twiml.VoiceSay{
 			Message:  "Welcome to Kayaking St. Augustine, we do not take bookings over the phone, leave a message and we will get back to you as soon as possible or visit www.kayaking S T augustine.com to book a tour.",
 			Language: "en-US",
 			Voice:    "Polly.Salli",
 		},
+		twiml.VoicePause{Length: "1s"},
+		twiml.VoiceSay{
+			Message:  "Press 1 to leave a message.",
+			Language: "en-US",
+			Voice:    "Polly.Salli",
+		},
+		twiml.VoiceGather{
+			NumDigits: "1",
+			Action:    "/voice/record",
+			Method:    "POST",
+		},
 	}
-	//twiml.VoiceEnqueue{
-	//		Name:          "Rep",
-	//		WaitUrlMethod: "POST",
-	//		WaitUrl:       "/hold",
-	//},
-	//twiml.VoiceDial{
-	//	Number: "+18157017775",
-	//},
-	//	}
-	//} else {
-	//	response = []twiml.Element{
-	/*		twiml.VoiceGather{
-					Action:    "/welcome",
-					Method:    "POST",
-					NumDigits: "1",
-					Input:     "dtmf",
-					Timeout:   "10",
-					InnerElements: []twiml.Element{twiml.VoiceSay{
-						Message:  "Sorry that response was invalid. Please try again.",
-						Language: "en-US",
-						Voice:    "Polly.Salli",
-					},
-					},
-				},
-			}
-		}*/
 
 	twimlResult, err := twiml.Voice(response)
 	if err != nil {
@@ -212,6 +197,90 @@ func Voice(c echo.Context) error {
 	}
 
 	return nil
+}
+
+func VoiceRecord(c echo.Context) error {
+	call := new(models.VoiceWebhook)
+	if err := c.Bind(call); err != nil {
+		return c.String(http.StatusBadRequest, "Invalid request data")
+	}
+
+	// Check if the user pressed 1
+	if call.Digits == "1" {
+		response := []twiml.Element{
+			twiml.VoiceSay{
+				Message:  "Please leave your message after the beep. Press pound when finished.",
+				Language: "en-US",
+				Voice:    "Polly.Salli",
+			},
+			twiml.VoiceRecord{
+				Action:      "/voice/finishRecording",
+				Method:      "POST",
+				MaxLength:   "300", // 5 minutes max
+				Timeout:     "10",  // 5 seconds of silence before ending
+				FinishOnKey: "#",   // Press # to end recording
+				PlayBeep:    "true",
+				//RecordingStatusCallback: "/voice/recording-status",
+			},
+		}
+
+		twimlResult, err := twiml.Voice(response)
+		if err != nil {
+			return c.String(http.StatusInternalServerError, err.Error())
+		}
+
+		c.Response().Header().Set("Content-Type", "text/xml")
+		return c.String(http.StatusOK, twimlResult)
+	}
+
+	// If they didn't press 1, repeat the main menu
+	response := []twiml.Element{
+		twiml.VoiceSay{
+			Message:  "Invalid input. Press 1 to leave a message.",
+			Language: "en-US",
+			Voice:    "Polly.Salli",
+		},
+		twiml.VoiceGather{
+			NumDigits: "1",
+			Action:    "/voice/finishRecording",
+			Method:    "POST",
+		},
+	}
+
+	twimlResult, err := twiml.Voice(response)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, err.Error())
+	}
+
+	c.Response().Header().Set("Content-Type", "text/xml")
+	return c.String(http.StatusOK, twimlResult)
+}
+
+func FinishRecording(c echo.Context) error {
+	call := new(models.VoiceWebhook)
+	if err := c.Bind(call); err != nil {
+		return c.String(http.StatusBadRequest, "Invalid request data")
+	}
+
+	// Log the recording details
+	log.Printf("Recording URL: %s, Duration: %s seconds", call.RecordingUrl, call.RecordingDuration)
+
+	response := []twiml.Element{
+		twiml.VoiceSay{
+			Message:  "Thank you for your message. We will get back to you as soon as possible. Goodbye.",
+			Language: "en-US",
+			Voice:    "Polly.Salli",
+		},
+		twiml.VoiceHangup{},
+	}
+
+	twimlResult, err := twiml.Voice(response)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, err.Error())
+	}
+
+	c.Response().Header().Set("Content-Type", "text/xml")
+	return c.String(http.StatusOK, twimlResult)
 }
 
 func Fail(c echo.Context) error {
