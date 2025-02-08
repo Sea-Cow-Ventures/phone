@@ -2,6 +2,8 @@ package database
 
 import (
 	"aidan/phone/internal/models"
+	"fmt"
+	"strings"
 )
 
 func IsAdminByName(name string) (bool, error) {
@@ -65,5 +67,25 @@ func DeleteAgentById(id int) error {
 func UpdateAgentById(id int, name, hashedPassword, email, number string, isAdmin bool) error {
 	_, err := db.Exec("UPDATE agents SET name = ?, hashedPassword = ?, email = ?, number = ?, isAdmin = ? WHERE id = ?",
 		name, hashedPassword, email, number, isAdmin, id)
+	return err
+}
+
+func UpdateAgentFieldsById(id int, changes map[string]interface{}) error {
+	if len(changes) == 0 {
+		return nil
+	}
+
+	setClauses := []string{}
+	args := []interface{}{}
+
+	for field, value := range changes {
+		setClauses = append(setClauses, fmt.Sprintf("%s = ?", field))
+		args = append(args, value)
+	}
+
+	query := fmt.Sprintf("UPDATE agents SET %s WHERE id = ?", strings.Join(setClauses, ", "))
+	args = append(args, id)
+
+	_, err := db.Exec(query, args...)
 	return err
 }

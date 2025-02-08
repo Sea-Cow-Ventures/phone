@@ -40,7 +40,7 @@ func ConnectTwilio() (*twilio.RestClient, error) {
 
 	resp, err := t.Api.CreateIncomingPhoneNumber(createParams)
 	if err != nil {
-		return nil, fmt.Errorf("Unable to create twilio phone number %w", err)
+		return nil, fmt.Errorf("unable to create twilio phone number %w", err)
 	}
 
 	logger.Info("Connected to twilio", zap.String("phoneNumber", cnf.PhoneNumber), zap.Any("twilioResponse", resp))

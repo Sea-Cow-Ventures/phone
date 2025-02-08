@@ -4,25 +4,12 @@ import (
 	"fmt"
 	"time"
 
+	"aidan/phone/internal/models"
+
 	twilioApi "github.com/twilio/twilio-go/rest/api/v2010"
 )
 
-type Call struct {
-	ID          string `db:"id"`
-	From        string `db:"fromNumber"`
-	To          string `db:"toNumber"`
-	Direction   string `db:"direction"`
-	CreatedDate string `db:"createdDate"`
-	CallerName  string `db:"callerName"`
-}
-
-type CallResponse struct {
-	Calls       []Call `json:"calls"`
-	TotalPages  int    `json:"totalPages"`
-	CurrentPage int    `json:"currentPage"`
-}
-
-func ReadCalls(page int, limit int) (CallResponse, error) {
+func ReadCalls(page int, limit int) (models.CallPages, error) {
 	if page <= 0 {
 		page = 1
 	}
@@ -31,7 +18,7 @@ func ReadCalls(page int, limit int) (CallResponse, error) {
 	}
 
 	offset := (page - 1) * limit
-	calls := []Call{}
+	calls := []models.Call{}
 
 	var totalCalls int
 	countQuery := `
@@ -42,35 +29,44 @@ func ReadCalls(page int, limit int) (CallResponse, error) {
 
 	err := db.QueryRow(countQuery).Scan(&totalCalls)
 	if err != nil {
-		return CallResponse{}, err
+		return models.CallPages{}, err
 	}
 
 	totalPages := (totalCalls + limit - 1) / limit
 
 	query := `
-		SELECT c.id, c.fromNumber, c.toNumber, c.direction, c.createdDate, COALESCE(c.callerName, '') AS callerName
+		SELECT 
+			c.id, 
+			c.fromNumber, 
+			c.toNumber, 
+			c.direction, 
+			c.createdDate, 
+			COALESCE(c.callerName, '') AS callerName,
+			COALESCE(ha.name, '') AS handledBy
 		FROM calls c
 		LEFT JOIN agents a ON c.toNumber = a.number 
+		LEFT JOIN handledCalls hc ON c.id = hc.callId
+		LEFT JOIN agents ha ON hc.agentId = ha.id
 		WHERE NOT (c.direction = 'outbound-dial' AND a.number IS NOT NULL) 
 		ORDER BY c.createdDate DESC 
 		LIMIT ? OFFSET ?`
 
 	rows, err := db.Queryx(query, limit, offset)
 	if err != nil {
-		return CallResponse{}, err
+		return models.CallPages{}, err
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		var call Call
+		var call models.Call
 		err := rows.StructScan(&call)
 		if err != nil {
-			return CallResponse{}, err
+			return models.CallPages{}, err
 		}
 		calls = append(calls, call)
 	}
 
-	return CallResponse{
+	return models.CallPages{
 		Calls:       calls,
 		TotalPages:  totalPages,
 		CurrentPage: page,
@@ -148,4 +144,17 @@ func DoesCallExist(callSid string) (bool, error) {
 	}
 
 	return count > 0, nil
+}
+
+func MarkCallHandled(callId, agentId int) error {
+	query := `
+		INSERT INTO handledCalls (callId, agentId) 
+		VALUES (?, ?) 
+		ON DUPLICATE KEY UPDATE agentId = ?
+	`
+	_, err := db.Exec(query, callId, agentId, agentId)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -1,7 +1,5 @@
 package models
 
-import "sync"
-
 type Agent struct {
 	ID             int    `db:"id" json:"id"`
 	Name           string `db:"name" json:"name"`
@@ -11,5 +9,4 @@ type Agent struct {
 	Email          string `db:"email" json:"email"`
 	Priority       int    `db:"priority" json:"priority"`
 	IsAdmin        bool   `db:"isAdmin" json:"isAdmin"`
-	Busy           sync.Mutex
 }

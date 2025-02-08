@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/twilio/twilio-go/twiml"
 	"go.uber.org/zap"
 )
 
@@ -127,8 +128,8 @@ func ConnectAgent(c echo.Context) error {
 
 func MarkCallHandled(c echo.Context) error {
 	var input struct {
-		CallId int `json:"callId" validate:"required,numeric"`,
-		
+		CallId  int `json:"callId" validate:"required,numeric"`
+		AgentId int `json:"agentId" validate:"required,numeric"`
 	}
 
 	if err := c.Bind(&input); err != nil {
@@ -145,7 +146,7 @@ func MarkCallHandled(c echo.Context) error {
 		})
 	}
 
-	err = service.MarkCallHandled(input.CallId)
+	err := service.MarkCallHandled(input.CallId, input.AgentId)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, models.ErrorResponse{
 			Success: false,
@@ -155,5 +156,84 @@ func MarkCallHandled(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"success": true,
+	})
+}
+
+func Voice(c echo.Context) error {
+	call := new(models.VoiceWebhook)
+	// Bind the request data to the struct
+	if err := c.Bind(call); err != nil {
+		return c.String(http.StatusBadRequest, "Invalid request data")
+	}
+
+	var response []twiml.Element
+
+	//if call.Digits == "1" {
+	response = []twiml.Element{
+		twiml.VoiceSay{
+			Message:  "Welcome to Kayaking St. Augustine, we do not take bookings over the phone, leave a message and we will get back to you as soon as possible or visit www.kayaking S T augustine.com to book a tour.",
+			Language: "en-US",
+			Voice:    "Polly.Salli",
+		},
+	}
+	//twiml.VoiceEnqueue{
+	//		Name:          "Rep",
+	//		WaitUrlMethod: "POST",
+	//		WaitUrl:       "/hold",
+	//},
+	//twiml.VoiceDial{
+	//	Number: "+18157017775",
+	//},
+	//	}
+	//} else {
+	//	response = []twiml.Element{
+	/*		twiml.VoiceGather{
+					Action:    "/welcome",
+					Method:    "POST",
+					NumDigits: "1",
+					Input:     "dtmf",
+					Timeout:   "10",
+					InnerElements: []twiml.Element{twiml.VoiceSay{
+						Message:  "Sorry that response was invalid. Please try again.",
+						Language: "en-US",
+						Voice:    "Polly.Salli",
+					},
+					},
+				},
+			}
+		}*/
+
+	twimlResult, err := twiml.Voice(response)
+	if err != nil {
+		c.String(http.StatusInternalServerError, err.Error())
+	} else {
+		c.Response().Header().Set("Content-Type", "text/xml")
+		c.String(http.StatusOK, twimlResult)
+	}
+
+	return nil
+}
+
+func Fail(c echo.Context) error {
+	// Log form data
+	if err := c.Request().ParseForm(); err == nil {
+		formData := c.Request().Form
+		logger.Info("Form Data: %+v", zap.Any("formData", formData))
+	}
+
+	// Log JSON body if present
+	var bodyData map[string]interface{}
+	if err := c.Bind(&bodyData); err == nil {
+		logger.Info("JSON Body: %+v", zap.Any("bodyData", bodyData))
+	}
+
+	// Log cookies
+	cookies := c.Cookies()
+	logger.Info("Cookies: %+v", zap.Any("cookies", cookies))
+
+	// Return a 400 Bad Request with all the logged data
+	return c.JSON(http.StatusBadRequest, map[string]interface{}{
+		"success": false,
+		"error":   "Request failed - check server logs for details",
 	})
 }

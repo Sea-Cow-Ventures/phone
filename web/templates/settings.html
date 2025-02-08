@@ -97,7 +97,7 @@
 	{{ template "menu.html" . }}
 
 	<!-- Modal Structure -->
-	<div id="errorModal" class="modal">
+	<div id="errorModal" class="modal hidden">
 		<div class="modal-content">
 			<span class="close" onclick="closeModal()">&times;</span>
 			<div class="modal-header">Error</div>
@@ -121,9 +121,9 @@
 				</thead>
 				<tbody id="userGrid" class="divide-y divide-gray-300">
 					{{ range $index, $agent := .Agents }}
-					<tr class="cursor-pointer hover:bg-gray-100" onclick="selectUser(this, '{{ $agent.ID }}', '{{ $agent.Username }}', '{{ $agent.Email }}', '{{ $agent.Number }}', {{ $agent.IsAdmin }})">
+					<tr class="cursor-pointer hover:bg-gray-100" onclick="selectUser(this, '{{ $agent.ID }}', '{{ $agent.Name }}', '{{ $agent.Email }}', '{{ $agent.Number }}', {{ $agent.IsAdmin }})">
 						<td class="py-2 text-center border border-gray-300">{{ $agent.ID }}</td>
-						<td class="py-2 text-center border border-gray-300">{{ $agent.Username }}</td>
+						<td class="py-2 text-center border border-gray-300">{{ $agent.Name }}</td>
 						<td class="py-2 text-center border border-gray-300">{{ $agent.Email }}</td>
 						<td class="py-2 text-center border border-gray-300">{{ $agent.Number }}</td>
 						<td class="py-2 text-center border border-gray-300">
@@ -134,10 +134,10 @@
 				</tbody>
 			</table>
 			<div class="mt-4 flex space-x-2 justify-center">
-				<button onclick="showAddUserForm()" class="px-2 py-1 bg-green-500 text-white rounded-md hover:bg-green-600">
+				<button onclick="showAddAgentForm()" class="px-2 py-1 bg-green-500 text-white rounded-md hover:bg-green-600">
 					<i class="fas fa-user-plus"></i> Add
 				</button>
-				<button id="deleteUserButton" onclick="deleteUser()" class="px-2 py-1 bg-red-500 text-white rounded-md hover:bg-red-600" disabled>
+				<button id="deleteAgentButton" onclick="deleteAgent()" class="px-2 py-1 bg-red-500 text-white rounded-md hover:bg-red-600" disabled>
 					<i class="fas fa-user-minus"></i> Delete
 				</button>
 			</div>
@@ -208,7 +208,7 @@
 			document.getElementById('username').value = username;
 			document.getElementById('email').value = email;
 			document.getElementById('number').value = number;
-			document.getElementById('deleteUserButton').disabled = false;
+			document.getElementById('deleteAgentButton').disabled = false;
 			document.getElementById('isAdmin').checked = isAdmin;
 			document.getElementById('formTitle').textContent = `Settings: ${username}`;
 
@@ -223,7 +223,7 @@
 			toggleButtons(true);
 		}
 
-		function showAddUserForm() {
+		function showAddAgentForm() {
 			if (selectedRow) {
 				selectedRow.classList.remove('bg-blue-100');
 				selectedRow = null;
@@ -234,7 +234,7 @@
 			document.getElementById('number').value = '';
 			document.getElementById('password').value = '';
 			document.getElementById('confirmPassword').value = '';
-			document.getElementById('deleteUserButton').disabled = true;
+			document.getElementById('deleteAgentButton').disabled = true;
 
 			document.getElementById('formTitle').textContent = 'Add User';
 			document.getElementById('adminCheckbox').classList.remove('hidden');
@@ -250,31 +250,24 @@
 			toggleButtons(false);
 		}
 
-		function deleteUser() {
+		function deleteAgent() {
 			if (selectedUserId) {
-				// Confirmation prompt
-				const isConfirmed = confirm("Are you sure you want to delete this user?");
+				const isConfirmed = confirm("Are you sure you want to delete this agent?");
 				if (!isConfirmed) {
 					return; 
 				}
 
-				fetch('/removeUser', {
+				ajaxLoad('/removeAgent', {
 					method: 'POST',
+					body: JSON.stringify({ id: selectedUserId }),
 					headers: {
 						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify({ id: selectedUserId })
-				})
-				.then(response => response.json())
-				.then(data => {
-					if (!data.success) {
-						showErrorModal(data.error);
-					} else {
-						window.location.href = '/settings';
 					}
 				})
-				.catch(error => {
-					showErrorModal('An unexpected error occurred.');
+				.then(data => {
+					if (data.success) {
+						window.location.href = '/settings';
+					}
 				});
 			}
 		}
@@ -284,11 +277,11 @@
 			const userId = document.getElementById('userId').value;
 
 			if (action === 'add') {
-				form.action = '/addUser';
+				form.action = '/addAgent';
 			} else if (action === 'edit' && userId) {
-				form.action = '/editUser';
+				form.action = '/editAgent';
 			} else {
-				alert('Please select a user to edit.');
+				alert('Please select an agent to edit.');
 				return;
 			}
 
@@ -332,9 +325,8 @@
 		function handleFormSubmission(event) {
 			event.preventDefault();
 			
-			// Validate passwords
 			if (!validatePasswords()) {
-				return; // Stop submission if passwords do not match
+				return;
 			}
 
 			const form = event.target;
@@ -345,23 +337,17 @@
 				jsonData[key] = value;
 			});
 
-			fetch(form.action, {
+			ajaxLoad(form.action, {
 				method: 'POST',
+				body: JSON.stringify(jsonData),
 				headers: {
 					'Content-Type': 'application/json',
-				},
-				body: JSON.stringify(jsonData),
-			})
-			.then(response => response.json())
-			.then(data => {
-				if (!data.success) {
-					showErrorModal(data.error);
-				} else {
-					window.location.href = '/settings';
 				}
 			})
-			.catch(error => {
-				showErrorModal('An unexpected error occurred.');
+			.then(data => {
+				if (data.success) {
+					window.location.href = '/settings';
+				}
 			});
 		}
 	</script>

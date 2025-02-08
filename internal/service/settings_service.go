@@ -104,7 +104,7 @@ func DeleteAgent(id int) error {
 	}
 
 	if isLast {
-		return errors.New("Cannot delete last admin user")
+		return errors.New("cannot delete last admin user")
 	}
 
 	err = database.DeleteAgentById(id)
@@ -121,17 +121,47 @@ func EditAgent(id int, name, password, email, number string, isAdmin bool) error
 		return errors.New("agent not found")
 	}
 
-	if agent.Name == name &&
-		agent.Email == email &&
-		agent.Number == number &&
-		agent.IsAdmin == isAdmin {
+	// Track changes
+	changes := make(map[string]interface{})
+
+	if name != "" && agent.Name != name {
+		changes["name"] = name
+	}
+	if email != "" && agent.Email != email {
+		changes["email"] = email
+	}
+	if number != "" && agent.Number != number {
+		changes["number"] = number
+	}
+	if agent.IsAdmin != isAdmin {
+		changes["isAdmin"] = isAdmin
+	}
+	if password != "" {
+		hashedPassword, err := util.HashPassword(password)
+		if err != nil {
+			return err
+		}
+		changes["password"] = hashedPassword
+	}
+
+	// If no changes, return early
+	if len(changes) == 0 {
 		return nil
 	}
 
-	hashedPassword, err := util.HashPassword(password)
+	// Update only the changed fields
+	return database.UpdateAgentFieldsById(id, changes)
+}
+
+func GetAllAgentNames() (map[int]string, error) {
+	fullAgents, err := database.GetAllAgents()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return database.UpdateAgentById(id, name, hashedPassword, email, number, isAdmin)
+	agents := map[int]string{}
+	for _, agent := range fullAgents {
+		agents[agent.ID] = agent.Name
+	}
+	return agents, nil
 }

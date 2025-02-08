@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"go.uber.org/zap"
 )
 
 func SettingsPage(c echo.Context) error {
@@ -26,8 +25,6 @@ func SettingsPage(c echo.Context) error {
 			Success: false,
 		})
 	}
-
-	logger.Info("Settings", zap.Any("data", settings))
 
 	return c.Render(http.StatusOK, "settings.html", settings)
 }
@@ -134,5 +131,20 @@ func EditAgent(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, models.SuccessResponse{
 		Success: true,
+	})
+}
+
+func ReadAgents(c echo.Context) error {
+	agents, err := service.GetAllAgentNames()
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, models.ErrorResponse{
+			Error:   "Failed to read agents",
+			Success: false,
+		})
+	}
+
+	return c.JSON(http.StatusOK, models.SuccessResponse{
+		Success: true,
+		Data:    agents,
 	})
 }

@@ -109,10 +109,32 @@ func OutboundAgentCall(to string) {
 	}
 }
 
-func MarkCallHandled(callSid string) error {
-	err := database.MarkCallHandled(callSid)
+func MarkCallHandled(callId, agentId int) error {
+	err := database.MarkCallHandled(callId, agentId)
 	if err != nil {
-		return fmt.Errorf("error marking call as handled: %w", err)
+		return err
 	}
 	return nil
 }
+
+/*func Voice() (string, error) {
+	twiml := []twiml.Element{
+		twiml.VoicePause{Length: "3"},
+		twiml.VoiceGather{
+			Action:    "/welcome",
+			Method:    "POST",
+			NumDigits: "1",
+			Input:     "dtmf",
+			Timeout:   "10",
+			InnerElements: []twiml.Element{twiml.VoiceSay{
+				Message:  "Welcome to Kayaking St. Augustine! Press 1 to speak to a representative.",
+				Language: "en-US",
+				Voice:    "Polly.Salli",
+			},
+			},
+		},
+		twiml.VoicePause{Length: "5"},
+	}
+
+	return twimlResult, nil
+}*/
