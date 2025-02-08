@@ -1,4 +1,5 @@
-*.crt
+tunnel.crt
+cmd/phone/tunnel.crt
 *.csr
 *.key
 config.json
