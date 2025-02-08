@@ -10,7 +10,6 @@ steps:
       GOARCH: amd64
     commands:
       - go mod tidy
-      - cp ngrok.ca.crt vendor/golang.ngrok.com/ngrok/assets/
       - cd cmd/phone
       - go build -o ../../phone
       - ls -la
