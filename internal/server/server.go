@@ -3,6 +3,7 @@ package server
 import (
 	"aidan/phone/pkg/util"
 	"context"
+	"fmt"
 	"html/template"
 	"net/http"
 	"os"
@@ -36,9 +37,11 @@ func init() {
 func Start() {
 	e := echo.New()
 
-	if cnf.Env == "dev" {
-		go createNgrokTunnel(e)
-	}
+	//	if cnf.Env == "dev" {
+	//		go createNgrokTunnel(e)
+	//	} else {
+	serveWithTls(e)
+	//	}
 
 	loadTemplates(e)
 	go startLiveReloadWatcher(e)
@@ -58,8 +61,35 @@ func Start() {
 	RegisterRoutes(e)
 }
 
+func serveWithTls(e *echo.Echo) {
+	// Build certificate and key file paths from the 'crt' folder.
+	workingDir, err := util.GetWorkingDir()
+	if err != nil {
+		logger.Fatal("Failed to get working directory", zap.Error(err))
+	}
+	certFile := filepath.Join(workingDir, "crt/cert.pem")
+	keyFile := filepath.Join(workingDir, "crt/key.pem")
+	addr := ":443" // Listening on port 443 for HTTPS
+
+	// Create the HTTP server with the Echo instance as the handler.
+	server := &http.Server{
+		Addr:    addr,
+		Handler: e,
+	}
+
+	// Start the HTTPS server in a separate goroutine.
+	go func() {
+		if err := server.ListenAndServeTLS(certFile, keyFile); err != nil && err != http.ErrServerClosed {
+			logger.Fatal("Failed to start webserver with TLS", zap.Error(err))
+		}
+	}()
+
+	logger.Info(fmt.Sprintf("Started TLS server on %s", addr))
+}
+
 func createNgrokTunnel(e *echo.Echo) {
 	tun, err := ngrok.Listen(context.Background(),
+
 		ngrokConfig.HTTPEndpoint(
 			ngrokConfig.WithDomain(cnf.UrlBasePath),
 		),
