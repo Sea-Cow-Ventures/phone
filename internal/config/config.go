@@ -21,10 +21,14 @@ type AppConfig struct {
 
 	//CertFile         string   `json:"CertFile"`
 	//CertKey          string   `json:"CertKey"`
-	DBServer string `json:"dbServer"`
-	DBUser   string `json:"dbUser"`
-	DBPass   string `json:"dbPass"`
-	DBSchema string `json:"dbSchema"`
+	DBServer         string `json:"dbServer"`
+	DBUser           string `json:"dbUser"`
+	DBPass           string `json:"dbPass"`
+	DBSchema         string `json:"dbSchema"`
+	CertEmail        string `json:"certEmail"`
+	CloudflareEmail  string `json:"cloudflareEmail"`
+	CloudflareAPIKey string `json:"cloudflareApiKey"`
+	CloudflareZoneID string `json:"cloudflareZoneID"`
 }
 
 var cnf AppConfig

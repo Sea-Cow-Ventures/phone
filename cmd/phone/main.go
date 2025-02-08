@@ -10,21 +10,27 @@ import (
 	"go.uber.org/zap"
 )
 
-type VoiceMessage struct {
-	Event          string `json:"event"`
-	SequenceNumber string `json:"sequenceNumber"`
-	StreamSid      string `json:"streamSid"`
-}
+/*
+	type VoiceMessage struct {
+		Event          string `json:"event"`
+		SequenceNumber string `json:"sequenceNumber"`
+		StreamSid      string `json:"streamSid"`
+	}
 
-type MediaFormat struct {
-	Track     string `json:"track"`
-	Chunk     string `json:"chunk"`
-	Timestamp string `json:"timestamp"`
-	Payload   string `json:"payload"`
-}
-
+	type MediaFormat struct {
+		Track     string `json:"track"`
+		Chunk     string `json:"chunk"`
+		Timestamp string `json:"timestamp"`
+		Payload   string `json:"payload"`
+	}
+*/
 func main() {
 	logger := log.GetLogger()
+
+	err := service.GenerateCert()
+	if err != nil {
+		logger.Fatal("Failed getting lets encrypt certificate", zap.Error(err))
+	}
 
 	server.Start()
 

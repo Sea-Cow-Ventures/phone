@@ -8,3 +8,5 @@ __debug*
 *.log
 /mysql
 /cmd/phone/config.json
+config.json.dev
+/cmd/phone/crt
