@@ -10,8 +10,9 @@ steps:
       GOARCH: amd64
     commands:
       - go mod tidy
+      - cd cmd/phone
+      - go build -o ../../phone
       - ls -la
-      - go build -o /cmd/phone/phone
 
   - name: build-docker
     image: docker:24.0.5
