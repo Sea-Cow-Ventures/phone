@@ -10,3 +10,4 @@ __debug*
 /cmd/phone/config.json
 config.json.dev
 /cmd/phone/crt
+cmd/phone/phone.exe

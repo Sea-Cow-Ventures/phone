@@ -10,6 +10,7 @@ steps:
       GOARCH: amd64
     commands:
       - go mod tidy
+      - ls -la
       - go build -o /cmd/phone/phone
 
   - name: build-docker
@@ -19,3 +20,4 @@ steps:
     commands:
       - docker build -t phone:local .
       - docker image prune -f --filter "dangling=true"
+
