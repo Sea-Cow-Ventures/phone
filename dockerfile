@@ -2,10 +2,10 @@ FROM debian:bullseye-slim
 
 WORKDIR /app
 
-COPY seacow-phone /app/
+COPY phone /app/
+COPY web /app/web
 
-RUN chmod +x /app/seacow-phone
+RUN chmod +x /app/phone
+EXPOSE4 443
 
-EXPOSE 80
-
-CMD ["/app/seacow-phone"]
+CMD ["/app/phone"]
