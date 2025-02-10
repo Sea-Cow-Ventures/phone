@@ -24,6 +24,7 @@ import (
 		Payload   string `json:"payload"`
 	}
 */
+
 func main() {
 	logger := log.GetLogger()
 
