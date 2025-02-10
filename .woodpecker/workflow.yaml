@@ -17,7 +17,7 @@ steps:
     image: docker:24.0.5
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - /ssh:/ssh
+      - /server/woodpecker/ssh:/ssh
     commands:
       - ls /ssh
       - ssh -i /ssh/external.law.local -o StrictHostKeyChecking=no -fNL /tmp/docker.sock:/var/run/docker.sock aidan@external.law.local
