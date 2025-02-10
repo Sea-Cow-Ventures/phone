@@ -21,3 +21,17 @@ steps:
       - docker build -t phone:local .
       - docker image prune -f --filter "dangling=true"
 
+  - name: deploy
+    image: docker:24.0.5
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    commands:
+     - docker run -d \
+      --name phone \
+      --restart always \
+      -v /server/phone/config.json:/app/config.json \
+      -v /server/phone/crt:/app/crt \
+      -p 192.168.1.215:443:443 \
+      phone:local
+
+

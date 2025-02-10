@@ -27,10 +27,10 @@ import (
 func main() {
 	logger := log.GetLogger()
 
-	err := service.GenerateCert()
+	/*err := service.GenerateCert()
 	if err != nil {
 		logger.Fatal("Failed getting lets encrypt certificate", zap.Error(err))
-	}
+	}*/
 
 	server.Start()
 
