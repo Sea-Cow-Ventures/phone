@@ -11,21 +11,19 @@ import (
 )
 
 var (
-	Cnf    config.AppConfig
-	db     *sqlx.DB
-	Logger *zap.Logger
+	db *sqlx.DB
 )
 
 func init() {
-	Cnf = config.GetConfig()
-	Logger = log.GetLogger()
+	cnf := config.GetConfig()
+	logger := log.GetLogger()
 
 	mCnf := mysql.Config{
-		User:                 Cnf.DBUser,
-		Passwd:               Cnf.DBPass,
+		User:                 cnf.DBUser,
+		Passwd:               cnf.DBPass,
 		Net:                  "tcp",
-		Addr:                 Cnf.DBServer + ":3306",
-		DBName:               Cnf.DBSchema,
+		Addr:                 cnf.DBServer + ":3306",
+		DBName:               cnf.DBSchema,
 		AllowNativePasswords: true,
 		ParseTime:            true,
 	}
@@ -37,16 +35,16 @@ func init() {
 	mysql.SetMaxIdleConns(10)
 
 	if err != nil {
-		Logger.Fatal("Failed to connect to mysql db", zap.Error(err))
+		logger.Fatal("Failed to connect to mysql db", zap.Error(err))
 	}
 
 	err = mysql.Ping()
 	if err != nil {
-		Logger.Fatal("Failed to connect to mysql db", zap.Error(err))
+		logger.Fatal("Failed to connect to mysql db", zap.Error(err))
 	}
 
 	db = mysql
-	Logger.Info("Connected to db")
+	logger.Info("Connected to db")
 }
 
 func GetDb() *sqlx.DB {

@@ -5,6 +5,7 @@ go 1.22.0
 toolchain go1.23.5
 
 require (
+	github.com/SherClockHolmes/webpush-go v1.4.0
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/go-acme/lego/v4 v4.21.0
 	github.com/go-playground/validator v9.31.0+incompatible
@@ -28,6 +29,7 @@ require (
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/goccy/go-json v0.10.4 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
+	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/inconshreveable/log15 v3.0.0-testing.5+incompatible // indirect

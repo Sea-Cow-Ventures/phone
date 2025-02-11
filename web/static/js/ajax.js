@@ -24,7 +24,6 @@ async function ajaxLoad(url, options = {}) {
 	try {
 		const response = await fetch(url, finalOptions);
 		const data = await response.json();
-		console.log(data);
 		if (!response.ok || !data.success) {
 			throw new Error(`<strong>Status:</strong> ${response.status}\n<strong>Error:</strong> ${data.error || 'Operation failed'}`);
 		}

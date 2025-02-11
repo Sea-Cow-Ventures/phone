@@ -28,14 +28,30 @@ import (
 func main() {
 	logger := log.GetLogger()
 
-	/*err := service.GenerateCert()
+	/*doesExist, err := service.DoesCertExist()
 	if err != nil {
-		logger.Fatal("Failed getting lets encrypt certificate", zap.Error(err))
-	}*/
+		logger.Fatal("Error checking if cert exists", zap.Error(err))
+	}
 
-	server.Start()
-
-	logger.Info("Ready")
+	if !doesExist {
+		logger.Info("Cert does not exist, generating...")
+		err := service.GenerateCert()
+		if err != nil {
+			logger.Fatal("Error generating cert", zap.Error(err))
+		}
+	} else {
+		isExpiringSoon, err := service.IsCertExpiringSoon()
+		if err != nil {
+			logger.Fatal("Error checking if cert is expiring soon", zap.Error(err))
+		}
+		if isExpiringSoon {
+			logger.Info("Cert is expiring soon, renewing...")
+			err := service.GenerateCert()
+			if err != nil {
+				logger.Fatal("Error renewing cert", zap.Error(err))
+			}
+		}
+	}
 
 	if adminCount, err := service.GetAdminCount(); err != nil || adminCount == 0 {
 		logger.Info("Creating default admin agent")
@@ -44,7 +60,20 @@ func main() {
 			logger.Fatal("Error creating default admin agent", zap.Error(err))
 		}
 		logger.Info("Default admin agent created", zap.Any("admin", admin))
+	}*/
+
+	webpushPublicKey, _, _ := service.GetWebpushKeys()
+	if webpushPublicKey == "" {
+		logger.Info("Generating webpush keys")
+		_, _, err := service.GenerateWebpushKeys()
+		if err != nil {
+			logger.Fatal("Error generating webpush keys", zap.Error(err))
+		}
 	}
+
+	server.Start()
+
+	logger.Info("Ready")
 
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
@@ -62,4 +91,17 @@ func main() {
 			}
 		}()
 	}
+	/*var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		<-ctx.Done()
+		shutdownCtx := context.Background()
+		shutdownCtx, cancel := context.WithTimeout(shutdownCtx, 10 * time.Second)
+		defer cancel()
+		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+			fmt.Fprintf(os.Stderr, "error shutting down http server: %s\n", err)
+		}
+	}()
+	wg.Wait()*/
 }

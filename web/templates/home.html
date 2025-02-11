@@ -546,13 +546,6 @@
 				document.getElementById('totalPages').textContent = totalPages;
 				document.getElementById('prevPage').disabled = currentPage <= 1;
 				document.getElementById('nextPage').disabled = currentPage >= totalPages;
-
-				console.log('Pagination:', {
-					currentPage,
-					totalPages,
-					callsPerPage,
-					callsLength: Array.isArray(data.calls) ? data.calls.length : 0
-				});
 			});
 		}
 

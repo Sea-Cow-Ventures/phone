@@ -37,11 +37,11 @@ func init() {
 func Start() {
 	e := echo.New()
 
-	//	if cnf.Env == "dev" {
-	//		go createNgrokTunnel(e)
-	//	} else {
-	serveWithTls(e)
-	//	}
+	if cnf.Env == "dev" {
+		go createNgrokTunnel(e)
+	} else {
+		serveWithTls(e)
+	}
 
 	loadTemplates(e)
 	go startLiveReloadWatcher(e)

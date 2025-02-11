@@ -40,4 +40,7 @@ func RegisterRoutes(e *echo.Echo) {
 	e.POST("/voice/record", handlers.VoiceRecord)
 	e.POST("/fail", handlers.Fail)
 	e.POST("/voice/finishRecording", handlers.FinishRecording)
+	e.GET("/webpush/vapidkey", handlers.GetVAPIDKey)
+	e.POST("/webpush/subscribe", handlers.SubscribeToWebpush)
+	e.GET("/webpush/test", handlers.TestWebpushNotification)
 }

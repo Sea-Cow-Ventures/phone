@@ -96,3 +96,21 @@ CREATE TABLE phoneNumberLookups
     callerType          VARCHAR(30)  NULL,
     url                 VARCHAR(255) NULL
 );
+
+create table webpushKey
+(
+    publicKey  VARCHAR(500) not null,
+    privateKey VARCHAR(500) not null
+);
+
+CREATE TABLE webpushSubscriptions (
+    id SERIAL PRIMARY KEY,
+    agentId INT NOT NULL,
+    endpoint VARCHAR(500) NOT NULL,
+    authKey VARCHAR(255) NOT NULL,
+    p256dhKey VARCHAR(255) NOT NULL,
+    createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    lastUsed TIMESTAMP,
+    userAgent VARCHAR(255),
+    enabled BOOLEAN DEFAULT true
+);

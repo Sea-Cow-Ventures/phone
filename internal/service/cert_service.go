@@ -5,13 +5,15 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/lego"
-	"github.com/go-acme/lego/v4/log"
+	legoLog "github.com/go-acme/lego/v4/log"
 	"github.com/go-acme/lego/v4/providers/dns/cloudflare"
 	"github.com/go-acme/lego/v4/registration"
 	"go.uber.org/zap"
@@ -47,11 +49,10 @@ func (l *LegoLogger) Println(args ...interface{}) {
 }
 
 func GenerateCert() error {
-	logger := zap.L()
 	logger.Info("Starting certificate generation")
 
 	// Set up custom logger for lego
-	log.Logger = &LegoLogger{logger: logger}
+	legoLog.Logger = &LegoLogger{logger: logger}
 
 	privateKey, err := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
 	if err != nil {
@@ -129,4 +130,27 @@ func GenerateCert() error {
 	}
 
 	return nil
+}
+
+func DoesCertExist() (bool, error) {
+	_, err := os.Stat("crt/cert.pem")
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return true, nil
+}
+
+func IsCertExpiringSoon() (bool, error) {
+	cert, err := tls.LoadX509KeyPair("crt/cert.pem", "crt/key.pem")
+	if err != nil {
+		return false, fmt.Errorf("failed to load certificate: %w", err)
+	}
+
+	oneMonthFromNow := time.Now().AddDate(0, 1, 0)
+
+	if cert.Leaf.NotAfter.Before(oneMonthFromNow) {
+		return false, fmt.Errorf("certificate expires in less than one month")
+	}
+
+	return true, nil
 }
